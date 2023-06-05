@@ -1,3 +1,4 @@
 .env
 .env.rtf
 ignore
+.DS_Store
