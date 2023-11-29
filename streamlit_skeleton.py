@@ -1,12 +1,4 @@
 import streamlit as st
-from langchain.vectorstores import Chroma
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
-import re
 
 def load_documents(documents):
   chunk_size=1000
@@ -16,40 +8,18 @@ def load_documents(documents):
 def generate_response(user_input):
     
     # Instantiate the llm object 
-    model_name = 'gpt-3.5-turbo-1106'
-    model = ChatOpenAI(model_name=model_name, temperature=0, api_key=openai_api_key)
-
-    persist_directory = 'ignore/chroma/'
-    embedding_function = OpenAIEmbeddings(api_key=openai_api_key)
-    vector_db = Chroma(embedding_function = embedding_function,
-                      persist_directory=persist_directory)
+    
 
     # Build prompt template
-    template = """Use the following pieces of context to answer the question at the end. \
-    If you don't know the answer, just say that you don't know, don't try to make up an answer. \
-    Use three sentences maximum. Keep the answer as concise as possible. 
-    Context: {context}
-    Question: {question}
-    Helpful Answer:"""
-    qa_chain_prompt = PromptTemplate.from_template(template)
+    
 
     # Build QuestionAnswer chain
-    qa_chain = RetrievalQA.from_chain_type(
-        model,
-        retriever=vector_db.as_retriever(),
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": qa_chain_prompt}
-    )
 
     # Query and Response
-    result = qa_chain({"query": user_input})
     st.info('Query Response:', icon='📕')
-    st.info(result["result"])
+    st.info("result")
     st.write(' ')
     st.info('Sources', icon='📚')
-    for document in result['source_documents']:
-        st.write(document.page_content)
-        st.write('')
 
 
 def main():
