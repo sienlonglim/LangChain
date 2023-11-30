@@ -8,7 +8,7 @@ from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 import re
 
-def load_documents(documents):
+def load_split_clean(documents):
   chunk_size=1000
   chunk_overlap=50
   
@@ -19,6 +19,7 @@ def generate_response(user_input):
     model_name = 'gpt-3.5-turbo-1106'
     model = ChatOpenAI(model_name=model_name, temperature=0, api_key=openai_api_key)
 
+    
     persist_directory = 'ignore/chroma/'
     embedding_function = OpenAIEmbeddings(api_key=openai_api_key)
     vector_db = Chroma(embedding_function = embedding_function,
@@ -53,20 +54,25 @@ def generate_response(user_input):
 
 
 def main():
+  st.set_page_config(page_title="LangChain RAG Project ", page_icon='🏠')
+  docs = None
+  # docs = ["Subscribed: Why the Subscription Model Will Be Your Company's Future - and What to Do About It"]
+
   # Main page area
-  st.markdown("### :house: Welcome to Sien Long's LangChain RAG Project")
-  st.info("Current loaded document:\nSubscribed: Why the Subscription Model Will Be Your Company's Future - and What to Do About It", icon='ℹ️')
+  st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
+  st.info(f"Current loaded document(s) \n\n {docs}", icon='ℹ️')
   st.write('Enter your API key on the sidebar to begin')
 
   # Sidebar
-  openai_api_key =st.sidebar.text_input("Enter your API key")
-  documents = st.file_uploader(label = 'Upload documents to for embedding to VectorDB', 
-                                help = 'Current acceptable files (pdf, txt)',
-                                type = ['pdf', 'txt'], 
-                                accept_multiple_files=True)
-  if st.sidebar.button('Upload', type='primary'):
-     with st.sidebar.spinner('Uploading...'):
-        load_documents(documents)
+  with st.sidebar:
+    openai_api_key =st.text_input("Enter your API key")
+    documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
+                                  help = 'Current acceptable files (pdf, txt)',
+                                  type = ['pdf', 'txt'], 
+                                  accept_multiple_files=True)
+    if st.button('Upload', type='primary'):
+      with st.spinner('Uploading...'):
+          docs = load_split_clean(documents)
 
   # Query form and response
   with st.form('my_form'):
@@ -75,7 +81,7 @@ def main():
     if not openai_api_key.startswith('sk-'):
       st.warning('Please enter your OpenAI API key!', icon='⚠')
 
-    if st.form_submit_button('Submit') and openai_api_key.startswith('sk-'):
+    if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
       with st.spinner('Loading...'):
         generate_response(user_input)
 
