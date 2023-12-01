@@ -145,8 +145,8 @@ def main():
   with st.sidebar:
     openai_api_key =st.text_input("Enter your API key")
     documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
-                                  help = 'Current acceptable files (pdf, txt)',
-                                  type = ['pdf', 'txt'], 
+                                  help = 'Current acceptable files (pdf)',
+                                  type = ['pdf'], 
                                   accept_multiple_files=True)
     if st.button('Upload', type='primary'):
       with st.spinner('Uploading...'):
