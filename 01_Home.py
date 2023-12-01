@@ -137,7 +137,7 @@ def main():
   '''
   Main Function
   '''
-  st.set_page_config(page_title="LangChain RAG Project ", page_icon='🏠')
+  st.set_page_config(page_title="Document Query Bot ", page_icon='🚀')
   if 'doc_names' not in st.session_state:
     st.session_state.doc_names = None
 
@@ -161,7 +161,7 @@ def main():
 
   # Query form and response
   with st.form('my_form'):
-    user_input = st.text_area('Enter prompt:', 'What are the books about and who are the author?')
+    user_input = st.text_area('Enter prompt:', 'What are the documents about and who are the authors?')
 
     if not openai_api_key.startswith('sk-'):
       st.warning('Please enter your OpenAI API key!', icon='⚠')
