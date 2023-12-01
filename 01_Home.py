@@ -7,7 +7,7 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import FAISS
 
 def load_split_clean(file_input : list, use_splitter = True, 
                      remove_leftover_delimiters = True,
@@ -73,22 +73,34 @@ def load_split_clean(file_input : list, use_splitter = True,
     print(f'Number of document chunks extracted: {len(documents)}')
     return documents, document_names
 
-def embed_to_vector_db(openai_api_key : str, documents : list,  persist_directory : str = None ):
+def embed_to_vector_db(openai_api_key : str, documents : list,  db_option : str = 'FAISS', persist_directory : str = None ):
     # create the open-source embedding function
     embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
                                         model='text-embedding-ada-002',
                                         show_progress_bar=True,
                                         openai_api_key = openai_api_key) 
 
-    # load it into Chroma
+    # load it into FAISS
     print('Initializing vector_db')
-    if persist_directory:
-        vector_db = Chroma.from_documents(documents = documents, 
-                                        embedding = embedding_function,
-                                        persist_directory = persist_directory)    
+    if db_option == 'FAISS':
+        if persist_directory:
+            vector_db = FAISS.from_documents(documents = documents, 
+                                            embedding = embedding_function,
+                                            persist_directory = persist_directory)    
+        else:
+            vector_db = FAISS.from_documents(documents = documents, 
+                                            embedding = embedding_function)
     else:
-        vector_db = Chroma.from_documents(documents = documents, 
-                                        embedding = embedding_function)
+    # load it into Chroma
+        print('Initializing vector_db')
+    # if persist_directory:
+    #     vector_db = Chroma.from_documents(documents = documents, 
+    #                                     embedding = embedding_function,
+    #                                     persist_directory = persist_directory)    
+    # else:
+    #     vector_db = Chroma.from_documents(documents = documents, 
+    #                                     embedding = embedding_function)
+    
     print('Complete')
     return vector_db
 
