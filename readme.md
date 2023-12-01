@@ -1,0 +1,1 @@
+chroma was changed to 0.3.29 for streamlit
