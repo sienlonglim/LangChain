@@ -1,33 +1,34 @@
 import streamlit as st
-from langchain.vectorstores import Chroma
+import re
+from PyPDF2 import PdfReader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
-from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
-from langchain.schema import Document
-from PyPDF2 import PdfReader
-import re
+from langchain.chains import RetrievalQA
+from langchain.vectorstores import Chroma
 
 def load_split_clean(file_input : list, use_splitter = True, 
                      remove_leftover_delimiters = True,
                      remove_pages = False,
-                     chunk_size=1000, chunk_overlap=50,
+                     chunk_size=800, chunk_overlap=80,
                      front_pages_to_remove : int = None, last_pages_to_remove : int = None, 
                      delimiters_to_remove : list = ['\t', '\n', '   ', '  ']):
     
     # Main list of all LangChain Documents
     documents = []
+    document_names = []
 
     # Handle file by file
     for file_index, file in enumerate(file_input):
         reader = PdfReader(file)
         print(f'Original pages of document: {len(reader.pages)}')
+        pdf_title = 'uploaded_file_' + str(file_index)
         for key, value in reader.metadata.items():
-            if 'title' in key:
+            if 'title' in key.lower():
                 pdf_title = value
-            else:
-                pdf_title = 'uploaded_file_' + str(file_index)
+        document_names.append(pdf_title)
                 
         # Remove pages
         if remove_pages:
@@ -51,13 +52,13 @@ def load_split_clean(file_input : list, use_splitter = True,
                 # Write into Document format with metadata
                 for chunk in page_chunks:
                     document.append(Document(page_content=chunk, 
-                                             metadata={'source': pdf_title , 'page':page_number+1}))
+                                             metadata={'source': pdf_title , 'page':str(page_number+1)}))
             
         else:
             # This will split purely by page
             for page_number, page in enumerate(reader.pages):
                 document.append(Document(page_content=page.extract_text(), 
-                                      metadata={'source': pdf_title , 'page':page_number+1}))
+                                      metadata={'source': pdf_title , 'page':str(page_number+1)}))
                 i += 1
         
 
@@ -70,27 +71,41 @@ def load_split_clean(file_input : list, use_splitter = True,
         documents.extend(document)
 
     print(f'Number of document chunks extracted: {len(documents)}')
-    return documents
+    return documents, document_names
 
+def embed_to_vector_db(openai_api_key : str, documents : list,  persist_directory : str = None ):
+    # create the open-source embedding function
+    embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
+                                        model='text-embedding-ada-002',
+                                        show_progress_bar=True,
+                                        openai_api_key = openai_api_key) 
 
-def embed_to_vector_db(documents):
-  pass
+    # load it into Chroma
+    print('Initializing vector_db')
+    if persist_directory:
+        vector_db = Chroma.from_documents(documents = documents, 
+                                        embedding = embedding_function,
+                                        persist_directory = persist_directory)    
+    else:
+        vector_db = Chroma.from_documents(documents = documents, 
+                                        embedding = embedding_function)
+    print('Complete')
+    return vector_db
 
-def initialize_models():
+def initialize_models(openai_api_key, docs):
   # Instantiate the llm object 
   model_name = 'gpt-3.5-turbo-1106'
-  llm = ChatOpenAI(model_name=model_name, temperature=0, api_key=openai_api_key)
-
+  llm = ChatOpenAI(model_name=model_name, 
+                   temperature=0, 
+                   api_key=openai_api_key)
   
   persist_directory = 'ignore/chroma/'
-  embedding_function = OpenAIEmbeddings(api_key=openai_api_key)
-  vector_db = Chroma(embedding_function = embedding_function,
-                    persist_directory=persist_directory)
+  vector_db = embed_to_vector_db(openai_api_key, docs, persist_directory=None)
 
   # Build prompt template
   template = """Use the following pieces of context to answer the question at the end. \
   If you don't know the answer, just say that you don't know, don't try to make up an answer. \
-  Use three sentences maximum. Keep the answer as concise as possible. 
+  Keep the answer as concise as possible. 
   Context: {context}
   Question: {question}
   Helpful Answer:"""
@@ -104,7 +119,9 @@ def initialize_models():
       chain_type_kwargs={"prompt": qa_chain_prompt}
   )
 
-def generate_response(user_input):
+  return qa_chain
+
+def prompt(user_input, qa_chain):
   # Query and Response
   result = qa_chain({"query": user_input})
   st.info('Query Response:', icon='📕')
@@ -112,8 +129,8 @@ def generate_response(user_input):
   st.write(' ')
   st.info('Sources', icon='📚')
   for document in result['source_documents']:
-      st.write(document.page_content + '\t- ' + document.metadata['source'] + '(pg ' + document.metadata['page'] + ')')
-      st.write('')
+      st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
+      st.write('-----------------------------------')
 
 
 def main():
@@ -121,7 +138,8 @@ def main():
   Main Function
   '''
   st.set_page_config(page_title="LangChain RAG Project ", page_icon='🏠')
-  docs = None
+  if 'doc_names' not in st.session_state:
+    st.session_state.doc_names = None
 
   # Sidebar
   with st.sidebar:
@@ -132,24 +150,25 @@ def main():
                                   accept_multiple_files=True)
     if st.button('Upload', type='primary'):
       with st.spinner('Uploading...'):
-          docs = load_split_clean(documents)
-          vector_db = embed_to_vector_db()
+          docs, st.session_state.doc_names = load_split_clean(documents)
+          st.session_state.qa_chain = initialize_models(openai_api_key, docs)
+          st.write('Embedding complete!')
 
   # Main page area
   st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
-  st.info(f"Current loaded document(s) \n\n {docs}", icon='ℹ️')
+  st.info(f"Current loaded document(s) \n\n {st.session_state.doc_names}", icon='ℹ️')
   st.write('Enter your API key on the sidebar to begin')
 
   # Query form and response
   with st.form('my_form'):
-    user_input = st.text_area('Enter prompt:', 'What is the book about and who is the author?')
+    user_input = st.text_area('Enter prompt:', 'What are the books about and who are the author?')
 
     if not openai_api_key.startswith('sk-'):
       st.warning('Please enter your OpenAI API key!', icon='⚠')
 
     if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
       with st.spinner('Loading...'):
-        generate_response(user_input)
+        prompt(user_input, st.session_state.qa_chain)
 
 # Main
 if __name__ == '__main__':
