@@ -1,3 +1,7 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import streamlit as st
 import re
 from PyPDF2 import PdfReader
@@ -168,7 +172,10 @@ def main():
 
     if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
       with st.spinner('Loading...'):
-        prompt(user_input, st.session_state.qa_chain)
+        try:
+           prompt(user_input, st.session_state.qa_chain)
+        except:
+           st.warning('Error occured, check that your API key is correct and documents are uploaded', icon='⚠')
 
 # Main
 if __name__ == '__main__':
