@@ -150,8 +150,10 @@ def main():
   Main Function
   '''
   st.set_page_config(page_title="Document Query Bot ", page_icon='🚀')
+  result = None
   if 'doc_names' not in st.session_state:
     st.session_state.doc_names = None
+    
 
   # Sidebar
   with st.sidebar:
