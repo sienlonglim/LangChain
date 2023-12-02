@@ -199,16 +199,17 @@ def main():
             except Exception as e:
                 print(e)
                 raise Exception('Error occured, unable to process response!')
-    
-        # Display the result
-        st.info('Query Response:', icon='📕')
-        st.info(result["result"])
-        st.write(' ')
-        st.info('Sources', icon='📚')
-        for document in result['source_documents']:
-            st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
-            st.write('-----------------------------------')
-        print('\tCompleted')
+
+        if result:
+            # Display the result
+            st.info('Query Response:', icon='📕')
+            st.info(result["result"])
+            st.write(' ')
+            st.info('Sources', icon='📚')
+            for document in result['source_documents']:
+                st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
+                st.write('-----------------------------------')
+            print('\tCompleted')
 
 # Main
 if __name__ == '__main__':
