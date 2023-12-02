@@ -191,7 +191,7 @@ def main():
 
     # Submit a prompt
     if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
-      with st.spinner('Loading...'):
+        with st.spinner('Loading...'):
             try:
                 st.session_state.llm = get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106')
                 st.session_state.qa_chain = get_chain(st.session_state.llm, st.session_state.vector_db, prompt_mode)
@@ -199,15 +199,16 @@ def main():
             except Exception as e:
                 print(e)
                 raise Exception('Error occured, unable to process response!')
-    # Display the result
-    st.info('Query Response:', icon='📕')
-    st.info(result["result"])
-    st.write(' ')
-    st.info('Sources', icon='📚')
-    for document in result['source_documents']:
-        st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
-        st.write('-----------------------------------')
-    print('\tCompleted')
+    
+        # Display the result
+        st.info('Query Response:', icon='📕')
+        st.info(result["result"])
+        st.write(' ')
+        st.info('Sources', icon='📚')
+        for document in result['source_documents']:
+            st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
+            st.write('-----------------------------------')
+        print('\tCompleted')
 
 # Main
 if __name__ == '__main__':

@@ -6,9 +6,12 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - switched to FAISS vector db from Chroma db due to compatibility issues with Streamlit (sqlite versioning)
 - removed pywin32 from library, streamlit is unable to install this dependency
 
+20231202 MVP2:
+- Incorporated types of different query chains - restricted query, creative query
+- Incorporated temperature settings
+- Restructured functions to get functions
+
 Upcoming works:
 - Include explanations on the frontend and backend workings
 - Include examples
-- Incorporate types of different query chains - strict query, imaginative query, general query
-- Restructured functions or maybe use OOP instead
 - Add logger
