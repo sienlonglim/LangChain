@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
 
-def load_split_clean(file_input : list, use_splitter = True, 
+def get_chunks(file_input : list, use_splitter = True, 
                      remove_leftover_delimiters = True,
                      remove_pages = False,
                      chunk_size=800, chunk_overlap=80,
@@ -19,12 +19,13 @@ def load_split_clean(file_input : list, use_splitter = True,
     # Main list of all LangChain Documents
     documents = []
     document_names = []
+    print(f'Splitting documents: total of {len(file_input)}')
 
     # Handle file by file
     for file_index, file in enumerate(file_input):
         reader = PdfReader(file)
-        print(f'Original pages of document: {len(reader.pages)}')
-        pdf_title = 'uploaded_file_' + str(file_index)
+        print(f'\tOriginal pages of document {file_index+1}: {len(reader.pages)}')
+        pdf_title = 'uploaded_file_' + str(file_index+1)
         for key, value in reader.metadata.items():
             if 'title' in key.lower():
                 pdf_title = value
@@ -36,7 +37,7 @@ def load_split_clean(file_input : list, use_splitter = True,
                 del reader.pages[0]
             for _ in range(last_pages_to_remove):
                 reader.pages.pop()
-            print(f'Number of pages after skipping: {len(reader.pages)}')
+            print(f'\tNumber of pages after skipping: {len(reader.pages)}')
 
         # Each file will be split into LangChain Documents and kept in a list
         document = []
@@ -73,7 +74,7 @@ def load_split_clean(file_input : list, use_splitter = True,
     print(f'Number of document chunks extracted: {len(documents)}')
     return documents, document_names
 
-def embed_to_vector_db(openai_api_key : str, documents : list,  db_option : str = 'FAISS', persist_directory : str = None ):
+def get_embeddings(openai_api_key : str, documents : list,  db_option : str = 'FAISS', persist_directory : str = None ):
     # create the open-source embedding function
     embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
                                         model='text-embedding-ada-002',
@@ -90,61 +91,60 @@ def embed_to_vector_db(openai_api_key : str, documents : list,  db_option : str 
         else:
             vector_db = FAISS.from_documents(documents = documents, 
                                             embedding = embedding_function)
-    else:
-    # load it into Chroma
-        print('Initializing vector_db')
-    # if persist_directory:
-    #     vector_db = Chroma.from_documents(documents = documents, 
-    #                                     embedding = embedding_function,
-    #                                     persist_directory = persist_directory)    
-    # else:
-    #     vector_db = Chroma.from_documents(documents = documents, 
-    #                                     embedding = embedding_function)
-    
-    print('Complete')
+    print('\tCompleted')
     return vector_db
 
-def initialize_models(openai_api_key, docs):
-  # Instantiate the llm object 
-  model_name = 'gpt-3.5-turbo-1106'
-  llm = ChatOpenAI(model_name=model_name, 
-                   temperature=0, 
-                   api_key=openai_api_key)
-  
-  persist_directory = 'ignore/chroma/'
-  vector_db = embed_to_vector_db(openai_api_key, docs, persist_directory=None)
+def get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106'):
+    # Instantiate the llm object 
+    print('Instantiating the llm')
+    try:
+        llm = ChatOpenAI(model_name=model_name, 
+                        temperature=temperature, 
+                        api_key=openai_api_key)
+    except Exception as e:
+        print(e)
+        raise Exception('Error occured, check that your API key is correct.')
+    else:
+        print('\tCompleted')
+    return llm 
 
-  # Build prompt template
-  template = """Use the following pieces of context to answer the question at the end. \
-  If you don't know the answer, just say that you don't know, don't try to make up an answer. \
-  Keep the answer as concise as possible. 
-  Context: {context}
-  Question: {question}
-  Helpful Answer:"""
-  qa_chain_prompt = PromptTemplate.from_template(template)
+def get_chain(llm, vector_db, prompt_mode):
+    print('Creating chain from template')
+    if prompt_mode == 'Restricted':
+        # Build prompt template
+        template = """Use the following pieces of context to answer the question at the end. \
+        If you don't know the answer, just say that you don't know, don't try to make up an answer. \
+        Keep the answer as concise as possible. 
+        Context: {context}
+        Question: {question}
+        Helpful Answer:"""
+        qa_chain_prompt = PromptTemplate.from_template(template)
+    elif prompt_mode == 'Creative':
+        # Build prompt template
+        template = """Use the following pieces of context to answer the question at the end. \
+        If you don't know the answer, you may make inferences, but make it clear in your answer. \
+        Keep the answer as concise as possible. 
+        Context: {context}
+        Question: {question}
+        Helpful Answer:"""
+        qa_chain_prompt = PromptTemplate.from_template(template)
 
-  # Build QuestionAnswer chain
-  qa_chain = RetrievalQA.from_chain_type(
-      llm,
-      retriever=vector_db.as_retriever(),
-      return_source_documents=True,
-      chain_type_kwargs={"prompt": qa_chain_prompt}
-  )
+    # Build QuestionAnswer chain
+    qa_chain = RetrievalQA.from_chain_type(
+        llm,
+        retriever=vector_db.as_retriever(),
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": qa_chain_prompt}
+        )
+    print('\tCompleted')
+    return qa_chain
 
-  return qa_chain
-
-def prompt(user_input, qa_chain):
-  # Query and Response
-  result = qa_chain({"query": user_input})
-  st.info('Query Response:', icon='📕')
-  st.info(result["result"])
-  st.write(' ')
-  st.info('Sources', icon='📚')
-  for document in result['source_documents']:
-      st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
-      st.write('-----------------------------------')
-
-
+def get_response(user_input, qa_chain):
+    # Query and Response
+    print('Getting response from server')
+    result = qa_chain({"query": user_input})
+    return result
+    
 def main():
   '''
   Main Function
@@ -157,14 +157,19 @@ def main():
   with st.sidebar:
     openai_api_key =st.text_input("Enter your API key")
     documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
-                                  help = 'Current acceptable files (pdf)',
+                                  help = 'Overwrites an existing files uploaded',
                                   type = ['pdf'], 
                                   accept_multiple_files=True)
-    if st.button('Upload', type='primary'):
-      with st.spinner('Uploading...'):
-          docs, st.session_state.doc_names = load_split_clean(documents)
-          st.session_state.qa_chain = initialize_models(openai_api_key, docs)
-          st.write('Embedding complete!')
+    if st.button('Upload', type='primary') and documents:
+      with st.spinner('Uploading... (this may take a while)'):
+          try:
+            docs, st.session_state.doc_names = get_chunks(documents)
+            st.session_state.vector_db = get_embeddings(openai_api_key, docs, persist_directory=None)
+          except Exception as e:
+            print(e)
+            raise Exception('Error occured while uploading documents.')
+          else:
+            st.write('Embedding complete!')
 
   # Main page area
   st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
@@ -175,15 +180,34 @@ def main():
   with st.form('my_form'):
     user_input = st.text_area('Enter prompt:', 'What are the documents about and who are the authors?')
 
+    # Select for model and prompt template settings
+    if st.session_state.doc_names:
+        prompt_mode = st.selectbox('Choose mode of prompt', ('Restricted', 'Creative'), help='Restriced mode will reduce chances of using outside sources')
+        temperature = st.select_slider('Select temperature', options=[x / 10 for x in range(0, 21)], help='Lower = generate more likely next words, higher = generate less likely next words')
+    
+    # Display error if no API key given
     if not openai_api_key.startswith('sk-'):
       st.warning('Please enter your OpenAI API key!', icon='⚠')
 
+    # Submit a prompt
     if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
       with st.spinner('Loading...'):
-        try:
-           prompt(user_input, st.session_state.qa_chain)
-        except:
-           st.warning('Error occured, check that your API key is correct and documents are uploaded', icon='⚠')
+            try:
+                st.session_state.llm = get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106')
+                st.session_state.qa_chain = get_chain(st.session_state.llm, st.session_state.vector_db, prompt_mode)
+                result = get_response(user_input, st.session_state.qa_chain)
+            except Exception as e:
+                print(e)
+                raise Exception('Error occured, unable to process response!')
+    # Display the result
+    st.info('Query Response:', icon='📕')
+    st.info(result["result"])
+    st.write(' ')
+    st.info('Sources', icon='📚')
+    for document in result['source_documents']:
+        st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
+        st.write('-----------------------------------')
+    print('\tCompleted')
 
 # Main
 if __name__ == '__main__':
