@@ -10,8 +10,12 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - Incorporated types of different query chains - restricted query, creative query
 - Incorporated temperature settings
 - Restructured functions to get functions
+- Included explanations on the frontend and backend workings
+- Included examples
+
+20231203 updates:
+- added status spinners
 
 Upcoming works:
-- Include explanations on the frontend and backend workings
-- Include examples
 - Add logger
+- Allow for txt and docx files

@@ -103,7 +103,7 @@ def get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106'):
                         api_key=openai_api_key)
     except Exception as e:
         print(e)
-        raise Exception('Error occured, check that your API key is correct.')
+        st.error('Error occured, check that your API key is correct.', icon="🚨")
     else:
         print('\tCompleted')
     return llm 
@@ -163,15 +163,17 @@ def main():
                                   type = ['pdf'], 
                                   accept_multiple_files=True)
     if st.button('Upload', type='primary') and documents:
-      with st.spinner('Uploading... (this may take a while)'):
+      with st.status('Uploading... (this may take a while)', expanded=True) as status:
           try:
+            st.write("Splitting documents...")
             docs, st.session_state.doc_names = get_chunks(documents)
+            st.write("Creating embeddings...")
             st.session_state.vector_db = get_embeddings(openai_api_key, docs, persist_directory=None)
           except Exception as e:
             print(e)
-            raise Exception('Error occured while uploading documents.')
+            status.update(label='Error occured.', state='error', expanded=False)
           else:
-            st.write('Embedding complete!')
+            status.update(label='Embedding complete!', state='complete', expanded=False)
 
   # Main page area
   st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
@@ -200,7 +202,7 @@ def main():
                 result = get_response(user_input, st.session_state.qa_chain)
             except Exception as e:
                 print(e)
-                raise Exception('Error occured, unable to process response!')
+                st.error('Error occured, unable to process response!', icon="🚨")
 
         if result:
             # Display the result
