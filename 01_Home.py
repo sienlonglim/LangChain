@@ -186,8 +186,11 @@ def main():
 
     # Select for model and prompt template settings
     if st.session_state.doc_names:
-        prompt_mode = st.selectbox('Choose mode of prompt', ('Restricted', 'Creative'), help='Restriced mode will reduce chances of using outside sources')
-        temperature = st.select_slider('Select temperature', options=[x / 10 for x in range(0, 21)], help='Lower = generate more likely next words, higher = generate less likely next words')
+        prompt_mode = st.selectbox('Choose mode of prompt', ('Restricted', 'Creative'), 
+                                   help='Restricted mode will reduce chances of LLM answering using out of context knowledge')
+        temperature = st.select_slider('Select temperature', options=[x / 10 for x in range(0, 21)], 
+                                       help='0 is recommended for restricted mode, 1 for creative mode. \n\
+                                        Going above 1 creates more unpredictable responses and takes longer.')
     
     # Display error if no API key given
     if not openai_api_key.startswith('sk-'):

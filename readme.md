@@ -1,7 +1,7 @@
 # Retrieval Augmented Generation (RAG) with LangChain and OpenAI
 This project implements RAG using OpenAI's embedding models and LangChain's Python library
 
-20231201 Fixes:
+20231201 Fixes and MVP1:
 - chroma was changed to 0.3.29 for streamlit - did not work, reverted
 - switched to FAISS vector db from Chroma db due to compatibility issues with Streamlit (sqlite versioning)
 - removed pywin32 from library, streamlit is unable to install this dependency
@@ -15,6 +15,7 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 
 20231203 updates:
 - added status spinners
+- updated tooltips
 
 Upcoming works:
 - Add logger
