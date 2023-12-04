@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+import yaml
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
@@ -146,77 +147,81 @@ def get_response(user_input, qa_chain):
     return result
     
 def main():
-  '''
-  Main Function
-  '''
-  st.set_page_config(page_title="Document Query Bot ")
-  result = None
-  if 'doc_names' not in st.session_state:
-    st.session_state.doc_names = None
+    '''
+    Main Function
+    '''
+    # Load configs and check for session_states
+    st.set_page_config(page_title="Document Query Bot ")
+    result = None
+    if 'doc_names' not in st.session_state:
+        st.session_state.doc_names = None
     
+    if 'config' not in st.session_state:
+        with open('config.yml', 'r') as file:
+            st.session_state.config = yaml.safe_load(file)
 
-  # Sidebar
-  with st.sidebar:
-    openai_api_key =st.text_input("Enter your API key")
-    documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
-                                  help = 'Overwrites an existing files uploaded',
-                                  type = ['pdf'], 
-                                  accept_multiple_files=True)
-    if st.button('Upload', type='primary') and documents:
-      with st.status('Uploading... (this may take a while)', expanded=True) as status:
-          try:
-            st.write("Splitting documents...")
-            docs, st.session_state.doc_names = get_chunks(documents)
-            st.write("Creating embeddings...")
-            st.session_state.vector_db = get_embeddings(openai_api_key, docs, persist_directory=None)
-          except Exception as e:
-            print(e)
-            status.update(label='Error occured.', state='error', expanded=False)
-          else:
-            status.update(label='Embedding complete!', state='complete', expanded=False)
+    # Sidebar
+    with st.sidebar:
+        openai_api_key =st.text_input("Enter your API key")
+        documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
+                                    help = 'Overwrites an existing files uploaded',
+                                    type = ['pdf'], 
+                                    accept_multiple_files=True)
+        if st.button('Upload', type='primary') and documents:
+            with st.status('Uploading... (this may take a while)', expanded=True) as status:
+                try:
+                    st.write("Splitting documents...")
+                    docs, st.session_state.doc_names = get_chunks(documents)
+                    st.write("Creating embeddings...")
+                    st.session_state.vector_db = get_embeddings(openai_api_key, docs, persist_directory=None)
+                except Exception as e:
+                    print(e)
+                    status.update(label='Error occured.', state='error', expanded=False)
+                else:
+                    status.update(label='Embedding complete!', state='complete', expanded=False)
 
-  # Main page area
-  st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
-  st.info(f"Current loaded document(s) \n\n {st.session_state.doc_names}", icon='ℹ️')
-  st.write('Enter your API key on the sidebar to begin')
+    # Main page area
+    st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
+    st.info(f"Current loaded document(s) \n\n {st.session_state.doc_names}", icon='ℹ️')
+    st.write('Enter your API key on the sidebar to begin')
 
-  # Query form and response
-  with st.form('my_form'):
-    user_input = st.text_area('Enter prompt:', 'What are the documents about and who are the authors?')
+    # Query form and response
+    with st.form('my_form'):
+        user_input = st.text_area('Enter prompt:', 'What are the documents about and who are the authors?')
 
-    # Select for model and prompt template settings
-    if st.session_state.doc_names:
-        prompt_mode = st.selectbox('Choose mode of prompt', ('Restricted', 'Creative'), 
-                                   help='Restricted mode will reduce chances of LLM answering using out of context knowledge')
-        temperature = st.select_slider('Select temperature', options=[x / 10 for x in range(0, 21)], 
-                                       help='0 is recommended for restricted mode, 1 for creative mode. \n\
-                                        Going above 1 creates more unpredictable responses and takes longer.')
-    
-    # Display error if no API key given
-    if not openai_api_key.startswith('sk-'):
-      st.warning('Please enter your OpenAI API key!', icon='⚠')
+        # Select for model and prompt template settings
+        if st.session_state.doc_names:
+            prompt_mode = st.selectbox('Choose mode of prompt', ('Restricted', 'Creative'), 
+                                    help='Restricted mode will reduce chances of LLM answering using out of context knowledge')
+            temperature = st.select_slider('Select temperature', options=[x / 10 for x in range(0, 21)], 
+                                        help='0 is recommended for restricted mode, 1 for creative mode. \n\
+                                            Going above 1 creates more unpredictable responses and takes longer.')
+        
+        # Display error if no API key given
+        if not openai_api_key.startswith('sk-'):
+            st.warning('Please enter your OpenAI API key!', icon='⚠')
 
-    # Submit a prompt
-    if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
-        with st.spinner('Loading...'):
-            try:
-                st.session_state.llm = get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106')
-                st.session_state.qa_chain = get_chain(st.session_state.llm, st.session_state.vector_db, prompt_mode)
-                result = get_response(user_input, st.session_state.qa_chain)
-            except Exception as e:
-                print(e)
-                st.error('Error occured, unable to process response!', icon="🚨")
+        # Submit a prompt
+        if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
+            with st.spinner('Loading...'):
+                try:
+                    st.session_state.llm = get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106')
+                    st.session_state.qa_chain = get_chain(st.session_state.llm, st.session_state.vector_db, prompt_mode)
+                    result = get_response(user_input, st.session_state.qa_chain)
+                except Exception as e:
+                    print(e)
+                    st.error('Error occured, unable to process response!', icon="🚨")
 
-        if result:
-            # Display the result
-            st.info('Query Response:', icon='📕')
-            st.info(result["result"])
-            st.write(' ')
-            st.info('Sources', icon='📚')
-            for document in result['source_documents']:
-                st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
-                st.write('-----------------------------------')
-            print('\tCompleted')
+            if result:
+                # Display the result
+                st.info('Query Response:', icon='📕')
+                st.info(result["result"])
+                st.write(' ')
+                st.info('Sources', icon='📚')
+                for document in result['source_documents']:
+                    st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata['page'] + ')')
+                    st.write('-----------------------------------')
+                print('\tCompleted')
 
 # Main
 if __name__ == '__main__':
