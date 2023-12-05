@@ -1,6 +1,7 @@
 import streamlit as st
 import re
 import yaml
+from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
@@ -10,70 +11,107 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
 
-def get_chunks(file_input : list, use_splitter = True, 
-                     remove_leftover_delimiters = True,
-                     remove_pages = False,
-                     chunk_size=800, chunk_overlap=80,
-                     front_pages_to_remove : int = None, last_pages_to_remove : int = None, 
-                     delimiters_to_remove : list = ['\t', '\n', '   ', '  ']):
+#other yaml variables not done yet
+
+def get_pdf(file, file_index, config):
+    use_splitter = config['splitter_options']['use_splitter']
+    remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
+    remove_pages = config['splitter_options']['remove_pages']
+    chunk_size = config['splitter_options']['chunk_size']
+    chunk_overlap = config['splitter_options']['chunk_overlap']
+    chunk_separators = config['splitter_options']['chunk_separators']
+    front_pages_to_remove = config['splitter_options']['front_pages_to_remove']
+    last_pages_to_remove = config['splitter_options']['last_pages_to_remove']
+    delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
+
+    reader = PdfReader(file)
+    pdf_title = 'uploaded_pdf_' + str(file_index+1)
+    for key, value in reader.metadata.items():
+        if 'title' in key.lower():
+            pdf_title = value
+    print(f'\tOriginal pages of {pdf_title}: {len(reader.pages)}')
+
+    # Remove pages
+    if remove_pages:
+        for _ in range(front_pages_to_remove):
+            del reader.pages[0]
+        for _ in range(last_pages_to_remove):
+            reader.pages.pop()
+        print(f'\tNumber of pages after skipping: {len(reader.pages)}')
     
+    # Each file will be split into LangChain Documents and kept in a list
+    document_chunks = []
+
+    # Loop through each page and extract the text and write in metadata
+    if use_splitter:
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
+                                            chunk_overlap=chunk_overlap,
+                                            separators = chunk_separators)
+        for page_number, page in enumerate(reader.pages):
+            page_chunks = splitter.split_text(page.extract_text()) # splits into a list of strings (chunks)
+
+            # Write into Document format with metadata
+            for chunk in page_chunks:
+                document_chunks.append(Document(page_content=chunk, metadata={'source': pdf_title , 'page':str(page_number+1)}))
+        
+    else:
+        # This will split purely by page
+        for page_number, page in enumerate(reader.pages):
+            document_chunks.append(Document(page_content=page.extract_text(),  metadata={'source': pdf_title , 'page':str(page_number+1)}))
+            i += 1
+
+    # Remove all left over the delimiters and extra spaces
+            if remove_leftover_delimiters:
+                for chunk in document_chunks:
+                    for delimiter in delimiters_to_remove:
+                        chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
+
+    return pdf_title, document_chunks
+
+def get_txt(file, config):
+    use_splitter = config['splitter_options']['use_splitter']
+    remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
+    chunk_size = config['splitter_options']['chunk_size']
+    chunk_overlap = config['splitter_options']['chunk_overlap']
+    chunk_separators = config['splitter_options']['chunk_separators']
+    delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
+
+    with open(file, 'r', encoding='utf-8') as f:
+        text = f.read()
+        title = f.name
+
+    if use_splitter:
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
+                                                chunk_overlap=chunk_overlap,
+                                                separators = chunk_separators)
+        document_chunks = splitter.split_documents(text) 
+    else:
+        document_chunks = [(Document(page_content=text,  metadata={'source': title , 'page':'na'}))]
+    
+    # Remove all left over the delimiters and extra spaces
+    if remove_leftover_delimiters:
+        for chunk in document_chunks:
+            for delimiter in delimiters_to_remove:
+                chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
+
+    return title, document_chunks
+
+# Consider creating a class
+def get_chunks(file_input : list, config):
     # Main list of all LangChain Documents
-    documents = []
+    document_chunks_full = []
     document_names = []
     print(f'Splitting documents: total of {len(file_input)}')
 
     # Handle file by file
     for file_index, file in enumerate(file_input):
-        reader = PdfReader(file)
-        print(f'\tOriginal pages of document {file_index+1}: {len(reader.pages)}')
-        pdf_title = 'uploaded_file_' + str(file_index+1)
-        for key, value in reader.metadata.items():
-            if 'title' in key.lower():
-                pdf_title = value
-        document_names.append(pdf_title)
-                
-        # Remove pages
-        if remove_pages:
-            for _ in range(front_pages_to_remove):
-                del reader.pages[0]
-            for _ in range(last_pages_to_remove):
-                reader.pages.pop()
-            print(f'\tNumber of pages after skipping: {len(reader.pages)}')
-
-        # Each file will be split into LangChain Documents and kept in a list
-        document = []
-
-        # Loop through each page and extract the text and write in metadata
-        if use_splitter:
-            splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
-                                                chunk_overlap=chunk_overlap,
-                                                separators = ['\n\n', ' '])
-            for page_number, page in enumerate(reader.pages):
-                page_chunks = splitter.split_text(page.extract_text()) # splits into a list of strings (chunks)
-
-                # Write into Document format with metadata
-                for chunk in page_chunks:
-                    document.append(Document(page_content=chunk, 
-                                             metadata={'source': pdf_title , 'page':str(page_number+1)}))
-            
-        else:
-            # This will split purely by page
-            for page_number, page in enumerate(reader.pages):
-                document.append(Document(page_content=page.extract_text(), 
-                                      metadata={'source': pdf_title , 'page':str(page_number+1)}))
-                i += 1
-        
-
-        # Remove all left over the delimiters and extra spaces
-        if remove_leftover_delimiters:
-            for chunk in document:
-                for delimiter in delimiters_to_remove:
-                    chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
-
-        documents.extend(document)
-
-    print(f'Number of document chunks extracted: {len(documents)}')
-    return documents, document_names
+        title, document_chunks = get_pdf(file, file_index, config)
+        title, document_chunks = get_txt(file, file_index, config)
+        document_names.append(title)
+        document_chunks_full.extend(document_chunks)
+             
+    print(f'Number of document chunks extracted in total: {len(document_chunks_full)}')
+    return document_chunks_full, document_names
 
 def get_embeddings(openai_api_key : str, documents : list,  db_option : str = 'FAISS', persist_directory : str = None ):
     # create the open-source embedding function
