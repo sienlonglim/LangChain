@@ -13,7 +13,7 @@ from langchain.vectorstores import FAISS
 
 #other yaml variables not done yet
 
-def get_pdf(file, file_index, config):
+def get_pdf(file : bytes, file_index : int, config : dict):
     use_splitter = config['splitter_options']['use_splitter']
     remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
     remove_pages = config['splitter_options']['remove_pages']
@@ -68,7 +68,7 @@ def get_pdf(file, file_index, config):
 
     return pdf_title, document_chunks
 
-def get_txt(file, config):
+def get_txt(file : bytes, config : dict):
     use_splitter = config['splitter_options']['use_splitter']
     remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
     chunk_size = config['splitter_options']['chunk_size']
@@ -97,7 +97,7 @@ def get_txt(file, config):
     return title, document_chunks
 
 # Consider creating a class
-def get_chunks(file_input : list, config):
+def get_chunks(file_input : list, config : dict):
     # Main list of all LangChain Documents
     document_chunks_full = []
     document_names = []
@@ -113,10 +113,13 @@ def get_chunks(file_input : list, config):
     print(f'Number of document chunks extracted in total: {len(document_chunks_full)}')
     return document_chunks_full, document_names
 
-def get_embeddings(openai_api_key : str, documents : list,  db_option : str = 'FAISS', persist_directory : str = None ):
+def get_embeddings(openai_api_key : str, documents : list,  config : dict):
     # create the open-source embedding function
+    model = config['embedding_options']['model']
+    db_option = config['embedding_options']['db_option']
+    persist_directory = config['embedding_options']['mopersist_directoryel']
     embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
-                                        model='text-embedding-ada-002',
+                                        model=model,
                                         show_progress_bar=True,
                                         openai_api_key = openai_api_key) 
 
@@ -133,7 +136,8 @@ def get_embeddings(openai_api_key : str, documents : list,  db_option : str = 'F
     print('\tCompleted')
     return vector_db
 
-def get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106'):
+def get_llm(openai_api_key, temperature, config : dict):
+    model_name = config['llm']
     # Instantiate the llm object 
     print('Instantiating the llm')
     try:
@@ -198,6 +202,12 @@ def main():
         with open('config.yml', 'r') as file:
             st.session_state.config = yaml.safe_load(file)
 
+    try:
+        load_dotenv('.env')
+        print(openai_api_key)
+    except:
+        print('No dotenv found')
+
     # Sidebar
     with st.sidebar:
         openai_api_key =st.text_input("Enter your API key")
@@ -209,9 +219,9 @@ def main():
             with st.status('Uploading... (this may take a while)', expanded=True) as status:
                 try:
                     st.write("Splitting documents...")
-                    docs, st.session_state.doc_names = get_chunks(documents)
+                    document_chunks_full, st.session_state.doc_names = get_chunks(documents, st.session_state.config)
                     st.write("Creating embeddings...")
-                    st.session_state.vector_db = get_embeddings(openai_api_key, docs, persist_directory=None)
+                    st.session_state.vector_db = get_embeddings(openai_api_key, document_chunks_full, st.session_state.config)
                 except Exception as e:
                     print(e)
                     status.update(label='Error occured.', state='error', expanded=False)
@@ -243,7 +253,7 @@ def main():
         if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
             with st.spinner('Loading...'):
                 try:
-                    st.session_state.llm = get_llm(openai_api_key, temperature, model_name = 'gpt-3.5-turbo-1106')
+                    st.session_state.llm = get_llm(openai_api_key, temperature, st.session_state.config)
                     st.session_state.qa_chain = get_chain(st.session_state.llm, st.session_state.vector_db, prompt_mode)
                     result = get_response(user_input, st.session_state.qa_chain)
                 except Exception as e:
