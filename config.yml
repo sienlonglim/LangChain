@@ -1,5 +1,6 @@
+enable_host_api_key: False
 embedding_options:
-  persist_directory: None # str or None
+  persist_directory: False # str or None
   db_option : 'FAISS'
   model : 'text-embedding-ada-002'
 llm: 'gpt-3.5-turbo-1106'

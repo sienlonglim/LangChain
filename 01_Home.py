@@ -1,7 +1,7 @@
 import streamlit as st
 import re
 import yaml
-from dotenv import load_dotenv
+from io import StringIO
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
@@ -11,9 +11,9 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
 
-#other yaml variables not done yet
+#Consider breaking sidebar, and authentication into smaller functions
 
-def get_pdf(file : bytes, file_index : int, config : dict):
+def get_pdf(file : bytes, pdf_title : str, config : dict):
     use_splitter = config['splitter_options']['use_splitter']
     remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
     remove_pages = config['splitter_options']['remove_pages']
@@ -25,7 +25,6 @@ def get_pdf(file : bytes, file_index : int, config : dict):
     delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
 
     reader = PdfReader(file)
-    pdf_title = 'uploaded_pdf_' + str(file_index+1)
     for key, value in reader.metadata.items():
         if 'title' in key.lower():
             pdf_title = value
@@ -68,7 +67,7 @@ def get_pdf(file : bytes, file_index : int, config : dict):
 
     return pdf_title, document_chunks
 
-def get_txt(file : bytes, config : dict):
+def get_txt(file : bytes, title : str, config : dict):
     use_splitter = config['splitter_options']['use_splitter']
     remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
     chunk_size = config['splitter_options']['chunk_size']
@@ -76,18 +75,21 @@ def get_txt(file : bytes, config : dict):
     chunk_separators = config['splitter_options']['chunk_separators']
     delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
 
-    with open(file, 'r', encoding='utf-8') as f:
-        text = f.read()
-        title = f.name
+    data = StringIO(file.getvalue().decode("utf-8"))
+    text = data.getvalue()
 
     if use_splitter:
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
                                                 chunk_overlap=chunk_overlap,
                                                 separators = chunk_separators)
-        document_chunks = splitter.split_documents(text) 
+        splits = splitter.split_text(text) 
+        document_chunks = []
+        for split in splits:
+            document_chunks.append((Document(page_content=split,  metadata={'source': title , 'page':'na'})))
     else:
         document_chunks = [(Document(page_content=text,  metadata={'source': title , 'page':'na'}))]
     
+    print(document_chunks[:3])
     # Remove all left over the delimiters and extra spaces
     if remove_leftover_delimiters:
         for chunk in document_chunks:
@@ -96,7 +98,40 @@ def get_txt(file : bytes, config : dict):
 
     return title, document_chunks
 
-# Consider creating a class
+def get_docx(file : bytes, title : str, config : dict):
+    use_splitter = config['splitter_options']['use_splitter']
+    remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
+    chunk_size = config['splitter_options']['chunk_size']
+    chunk_overlap = config['splitter_options']['chunk_overlap']
+    chunk_separators = config['splitter_options']['chunk_separators']
+    delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
+
+
+    # import base64
+    # decoded = base64.b64decode(encoded)
+    # data = StringIO(file.getvalue().decode("utf-8"))
+    # text = data.getvalue()
+
+    if use_splitter:
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
+                                                chunk_overlap=chunk_overlap,
+                                                separators = chunk_separators)
+        splits = splitter.split_text(text) 
+        document_chunks = []
+        for split in splits:
+            document_chunks.append((Document(page_content=split,  metadata={'source': title , 'page':'na'})))
+    else:
+        document_chunks = [(Document(page_content=text,  metadata={'source': title , 'page':'na'}))]
+    
+    print(document_chunks[:3])
+    # Remove all left over the delimiters and extra spaces
+    if remove_leftover_delimiters:
+        for chunk in document_chunks:
+            for delimiter in delimiters_to_remove:
+                chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
+
+    return title, document_chunks
+
 def get_chunks(file_input : list, config : dict):
     # Main list of all LangChain Documents
     document_chunks_full = []
@@ -105,19 +140,26 @@ def get_chunks(file_input : list, config : dict):
 
     # Handle file by file
     for file_index, file in enumerate(file_input):
-        title, document_chunks = get_pdf(file, file_index, config)
-        title, document_chunks = get_txt(file, file_index, config)
+        file_type = file.type.split('/')[1]
+        print(f'\tSplitting file {file_index+1} : {file.name}')
+        file_name = file.name.split('.')[:-1]
+        if file_type =='pdf':
+            title, document_chunks = get_pdf(file, file_name, config)
+        elif file_type == 'txt' or file_type == 'plain':
+            title, document_chunks = get_txt(file, file_name, config)
+        elif file_type == 'vnd.openxmlformats-officedocument.wordprocessingml.document':
+            title, document_chunks = get_docx(file, file_name, config)
         document_names.append(title)
         document_chunks_full.extend(document_chunks)
              
-    print(f'Number of document chunks extracted in total: {len(document_chunks_full)}')
+    print(f'\tNumber of document chunks extracted in total: {len(document_chunks_full)}')
     return document_chunks_full, document_names
 
 def get_embeddings(openai_api_key : str, documents : list,  config : dict):
     # create the open-source embedding function
     model = config['embedding_options']['model']
     db_option = config['embedding_options']['db_option']
-    persist_directory = config['embedding_options']['mopersist_directoryel']
+    persist_directory = config['embedding_options']['persist_directory']
     embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
                                         model=model,
                                         show_progress_bar=True,
@@ -126,13 +168,9 @@ def get_embeddings(openai_api_key : str, documents : list,  config : dict):
     # load it into FAISS
     print('Initializing vector_db')
     if db_option == 'FAISS':
-        if persist_directory:
-            vector_db = FAISS.from_documents(documents = documents, 
-                                            embedding = embedding_function,
-                                            persist_directory = persist_directory)    
-        else:
-            vector_db = FAISS.from_documents(documents = documents, 
-                                            embedding = embedding_function)
+        print('\tRunning in memory')
+        vector_db = FAISS.from_documents(documents = documents, 
+                                        embedding = embedding_function)
     print('\tCompleted')
     return vector_db
 
@@ -202,18 +240,15 @@ def main():
         with open('config.yml', 'r') as file:
             st.session_state.config = yaml.safe_load(file)
 
-    try:
-        load_dotenv('.env')
-        print(openai_api_key)
-    except:
-        print('No dotenv found')
+    if st.session_state.config['enable_host_api_key']:
+        openai_api_key = st.secrets['openai_api_key']
 
     # Sidebar
     with st.sidebar:
         openai_api_key =st.text_input("Enter your API key")
         documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
                                     help = 'Overwrites an existing files uploaded',
-                                    type = ['pdf'], 
+                                    type = ['pdf', 'txt', 'docx'], 
                                     accept_multiple_files=True)
         if st.button('Upload', type='primary') and documents:
             with st.status('Uploading... (this may take a while)', expanded=True) as status:
