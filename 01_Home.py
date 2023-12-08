@@ -12,8 +12,6 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
 
-#Consider breaking sidebar, and authentication into smaller functions
-
 def get_pdf(file : bytes, pdf_title : str, config : dict):
     use_splitter = config['splitter_options']['use_splitter']
     remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
@@ -29,7 +27,7 @@ def get_pdf(file : bytes, pdf_title : str, config : dict):
     for key, value in reader.metadata.items():
         if 'title' in key.lower():
             pdf_title = value
-    print(f'\tOriginal pages of {pdf_title}: {len(reader.pages)}')
+    print(f'\t\tOriginal no. of pages: {len(reader.pages)}')
 
     # Remove pages
     if remove_pages:
@@ -66,6 +64,7 @@ def get_pdf(file : bytes, pdf_title : str, config : dict):
                     for delimiter in delimiters_to_remove:
                         chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
 
+    print(f'\t\tExtracted no. of documents: {len(document_chunks)}')
     return pdf_title, document_chunks
 
 def get_txt(file : bytes, title : str, config : dict):
@@ -91,13 +90,13 @@ def get_txt(file : bytes, title : str, config : dict):
     else:
         document_chunks = [(Document(page_content=text,  metadata={'source': title , 'page':'na'}))]
     
-    print(document_chunks[:3])
     # Remove all left over the delimiters and extra spaces
     if remove_leftover_delimiters:
         for chunk in document_chunks:
             for delimiter in delimiters_to_remove:
                 chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
 
+    print(f'\t\tExtracted no. of documents: {len(document_chunks)}')
     return title, document_chunks
 
 def get_docx(file : bytes, title : str, config : dict):
@@ -131,6 +130,7 @@ def get_docx(file : bytes, title : str, config : dict):
             for delimiter in delimiters_to_remove:
                 chunk.page_content = re.sub(delimiter, ' ', chunk.page_content)
 
+    print(f'\t\tExtracted no. of documents: {len(document_chunks)}')
     return title, document_chunks
 
 def get_chunks(file_input : list, config : dict):
@@ -141,15 +141,21 @@ def get_chunks(file_input : list, config : dict):
 
     # Handle file by file
     for file_index, file in enumerate(file_input):
+
+        # Get the file type and file name
         file_type = file.type.split('/')[1]
         print(f'\tSplitting file {file_index+1} : {file.name}')
         file_name = file.name.split('.')[:-1]
+        file_name = ''.join(file_name)
+
+        # Handle different file types
         if file_type =='pdf':
             title, document_chunks = get_pdf(file, file_name, config)
         elif file_type == 'txt' or file_type == 'plain':
             title, document_chunks = get_txt(file, file_name, config)
         elif file_type == 'vnd.openxmlformats-officedocument.wordprocessingml.document':
             title, document_chunks = get_docx(file, file_name, config)
+        
         document_names.append(title)
         document_chunks_full.extend(document_chunks)
              
@@ -226,14 +232,8 @@ def get_response(user_input, qa_chain):
     print('Getting response from server')
     result = qa_chain({"query": user_input})
     return result
-    
-def main():
-    '''
-    Main Function
-    '''
-    # Load configs and check for session_states
-    st.set_page_config(page_title="Document Query Bot ")
-    result = None
+
+def get_settings():
     if 'doc_names' not in st.session_state:
         st.session_state.doc_names = None
     
@@ -243,14 +243,28 @@ def main():
 
     if st.session_state.config['enable_host_api_key']:
         openai_api_key = st.secrets['openai_api_key']
+    else:
+        openai_api_key = ''
+    return openai_api_key
+
+def main():
+    '''
+    Main Function
+    '''
+    # Load configs and check for session_states
+    st.set_page_config(page_title="Document Query Bot ")
+    result = None
+    openai_api_key = get_settings()
 
     # Sidebar
     with st.sidebar:
-        openai_api_key =st.text_input("Enter your API key")
+        if openai_api_key == '':
+            openai_api_key =st.text_input("Enter your API key")
         documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
-                                    help = 'Overwrites an existing files uploaded',
+                                    help = 'Overwrites any existing files uploaded',
                                     type = ['pdf', 'txt', 'docx'], 
                                     accept_multiple_files=True)
+        # Document uploader
         if st.button('Upload', type='primary') and documents:
             with st.status('Uploading... (this may take a while)', expanded=True) as status:
                 try:
@@ -266,8 +280,17 @@ def main():
 
     # Main page area
     st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
-    st.info(f"Current loaded document(s) \n\n {st.session_state.doc_names}", icon='ℹ️')
-    st.write('Enter your API key on the sidebar to begin')
+
+    # Info bar
+    if st.session_state.doc_names:
+        doc_name_display = ''
+        for doc_count, doc_name in enumerate(st.session_state.doc_names):
+            doc_name_display += str(doc_count+1) + '. ' + doc_name + '\n\n'
+    else:
+        doc_name_display = 'No documents uploaded yet!'
+    st.info(f"Current loaded document(s): \n\n {doc_name_display}", icon='ℹ️')
+    if not openai_api_key:
+        st.write('Enter your API key on the sidebar to begin')
 
     # Query form and response
     with st.form('my_form'):
