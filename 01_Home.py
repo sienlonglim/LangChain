@@ -108,9 +108,9 @@ def get_docx(file : bytes, title : str, config : dict):
     delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
 
 
-    word = docx(file)
+    word_doc = docx(file)
     text = ''
-    for paragraph in word.paragraphs:
+    for paragraph in word_doc.paragraphs:
         text += paragraph.text
 
     if use_splitter:
@@ -294,7 +294,7 @@ def main():
 
     # Query form and response
     with st.form('my_form'):
-        user_input = st.text_area('Enter prompt:', 'What are the documents about and who are the authors?')
+        user_input = st.text_area('Enter prompt:')
 
         # Select for model and prompt template settings
         if st.session_state.doc_names:
