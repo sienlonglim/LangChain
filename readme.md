@@ -17,6 +17,9 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - added status spinners
 - updated tooltips
 
+20231207 updates:
+- refactored to use yaml config file
+- allowed for txt and docx files
+
 Upcoming works:
 - Add logger
-- Allow for txt and docx files

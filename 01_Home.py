@@ -3,6 +3,7 @@ import re
 import yaml
 from io import StringIO
 from PyPDF2 import PdfReader
+from docx import Document as docx
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -75,6 +76,7 @@ def get_txt(file : bytes, title : str, config : dict):
     chunk_separators = config['splitter_options']['chunk_separators']
     delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
 
+    # file.getvalue() returns bytes which is decoded using utf-8, to instantiate a StringIO. Then we getvalue of the StringIO
     data = StringIO(file.getvalue().decode("utf-8"))
     text = data.getvalue()
 
@@ -107,10 +109,10 @@ def get_docx(file : bytes, title : str, config : dict):
     delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
 
 
-    # import base64
-    # decoded = base64.b64decode(encoded)
-    # data = StringIO(file.getvalue().decode("utf-8"))
-    # text = data.getvalue()
+    word = docx(file)
+    text = ''
+    for paragraph in word.paragraphs:
+        text += paragraph.text
 
     if use_splitter:
         splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size,
@@ -123,7 +125,6 @@ def get_docx(file : bytes, title : str, config : dict):
     else:
         document_chunks = [(Document(page_content=text,  metadata={'source': title , 'page':'na'}))]
     
-    print(document_chunks[:3])
     # Remove all left over the delimiters and extra spaces
     if remove_leftover_delimiters:
         for chunk in document_chunks:
