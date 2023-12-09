@@ -166,22 +166,29 @@ def get_embeddings(openai_api_key : str, documents : list,  config : dict):
     # create the open-source embedding function
     model = config['embedding_options']['model']
     db_option = config['embedding_options']['db_option']
-    persist_directory = config['embedding_options']['persist_directory']
+    # persist_directory = config['embedding_options']['persist_directory']
+
     embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
                                         model=model,
                                         show_progress_bar=True,
                                         openai_api_key = openai_api_key) 
 
-    # load it into FAISS
+    # Load it into FAISS
     print('Initializing vector_db')
     if db_option == 'FAISS':
         print('\tRunning in memory')
         vector_db = FAISS.from_documents(documents = documents, 
                                         embedding = embedding_function)
     print('\tCompleted')
+
+    # If successful, increment the usage based on number of documents
+    if openai_api_key == st.secrets['openai_api_key']:
+        docs_processed = len(st.session_state.doc_names)
+        increment_api_usage_count(docs_processed)
+        print(f'Current usage_counter: {st.session_state.usage_counter}')
     return vector_db
 
-def get_llm(openai_api_key, temperature, config : dict):
+def get_llm(openai_api_key : str, temperature : int, config : dict):
     model_name = config['llm']
     # Instantiate the llm object 
     print('Instantiating the llm')
@@ -196,7 +203,7 @@ def get_llm(openai_api_key, temperature, config : dict):
         print('\tCompleted')
     return llm 
 
-def get_chain(llm, vector_db, prompt_mode):
+def get_chain(llm : object, vector_db : object, prompt_mode : str):
     print('Creating chain from template')
     if prompt_mode == 'Restricted':
         # Build prompt template
@@ -227,25 +234,38 @@ def get_chain(llm, vector_db, prompt_mode):
     print('\tCompleted')
     return qa_chain
 
-def get_response(user_input, qa_chain):
+def get_response(user_input : str, qa_chain : object):
     # Query and Response
     print('Getting response from server')
     result = qa_chain({"query": user_input})
     return result
 
 def get_settings():
+    '''
+    Handles initializing of session_state variables
+    '''
+    # Create empty list of document names
     if 'doc_names' not in st.session_state:
         st.session_state.doc_names = None
     
+    # Load config if not yet loaded
     if 'config' not in st.session_state:
         with open('config.yml', 'r') as file:
             st.session_state.config = yaml.safe_load(file)
 
+    # Create an API call counter, to cap usage
+    if 'usage_counter' not in st.session_state:
+        st.session_state.usage_counter = 0
+
+    # Check if host api key is enabled
     if st.session_state.config['enable_host_api_key']:
         openai_api_key = st.secrets['openai_api_key']
     else:
-        openai_api_key = ''
+        openai_api_key = 'NA'
     return openai_api_key
+
+def increment_api_usage_count(increment : int):
+    st.session_state.usage_counter += increment
 
 def main():
     '''
@@ -254,17 +274,25 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     result = None
-    openai_api_key = get_settings()
+    openai_api_key_host = get_settings()
 
     # Sidebar
     with st.sidebar:
-        if openai_api_key == '':
+        # API option
+        if st.session_state.usage_counter >= 5:
+            api_option = st.radio('API key usage', ['Host API key usage cap reached!'])
+        else:
+            api_option = st.radio('API key usage', ['Use my own API key', 'Use host API key (capped)'], help='Cap is counted by number of documents uploaded (max 5 in total)')
+        if (api_option == 'Use my own API key') or (api_option == 'Host API key usage cap reached!'):
             openai_api_key =st.text_input("Enter your API key")
+        else:
+            openai_api_key = openai_api_key_host
+        
+        # Document uploader
         documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
                                     help = 'Overwrites any existing files uploaded',
                                     type = ['pdf', 'txt', 'docx'], 
                                     accept_multiple_files=True)
-        # Document uploader
         if st.button('Upload', type='primary') and documents:
             with st.status('Uploading... (this may take a while)', expanded=True) as status:
                 try:
@@ -293,8 +321,9 @@ def main():
         st.write('Enter your API key on the sidebar to begin')
 
     # Query form and response
+    st.divider()
     with st.form('my_form'):
-        user_input = st.text_area('Enter prompt:')
+        user_input = st.text_area('Enter prompt:', value='Enter prompt here')
 
         # Select for model and prompt template settings
         if st.session_state.doc_names:
@@ -306,7 +335,10 @@ def main():
         
         # Display error if no API key given
         if not openai_api_key.startswith('sk-'):
-            st.warning('Please enter your OpenAI API key!', icon='⚠')
+            if openai_api_key == 'NA':
+                st.warning('Host key currently not available, please use your own OpenAI API key!', icon='⚠')
+            else:
+                st.warning('Please enter your OpenAI API key!', icon='⚠')
 
         # Submit a prompt
         if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
