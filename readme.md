@@ -21,5 +21,9 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - refactored to use yaml config file
 - allowed for txt and docx files
 
+20231210 updates:
+- refactored to work on modules
+- allowed for wikipedia query with RAG
+
 Upcoming works:
 - Add logger
