@@ -10,7 +10,7 @@ splitter_options:
   remove_pages: False
   chunk_size : 800
   chunk_overlap : 80
-  chunk_separators : ['\n\n', '. ']
+  chunk_separators : ["\n\n", "\n", " ", ""]
   front_pages_to_remove : None # int or None
   last_pages_to_remove : None # int or None
   delimiters_to_remove : ['\t', '\n', '   ', '  '] #list of strings
