@@ -6,6 +6,9 @@ from langchain.schema import Document
 from tempfile import NamedTemporaryFile
 
 def remove_delimiters(document_chunks, config : dict):
+    '''
+    Helper function to remove remaining delimiters in document chunks
+    '''
     delimiters_to_remove = config['splitter_options']['delimiters_to_remove']
     for chunk in document_chunks:
         for delimiter in delimiters_to_remove:
@@ -13,6 +16,9 @@ def remove_delimiters(document_chunks, config : dict):
     return document_chunks
 
 def remove_chunks(document_chunks : list, config : dict):
+    '''
+    Helper function to remove any unwanted document chunks after splitting
+    '''
     front = config['splitter_options']['front_chunk_to_remove']
     end = config['splitter_options']['last_chunks_to_remove']
     # Remove pages
@@ -24,6 +30,9 @@ def remove_chunks(document_chunks : list, config : dict):
     return document_chunks
 
 def get_pdf(temp_file_path : str, title : str, config : dict, splitter : object):
+    '''
+    Function to process PDF files
+    '''
     loader = PyMuPDFLoader(temp_file_path) #This loader preserves more metadata
 
     if splitter:
@@ -43,6 +52,9 @@ def get_pdf(temp_file_path : str, title : str, config : dict, splitter : object)
     return title, document_chunks
 
 def get_txt(temp_file_path : str, title : str, config : dict, splitter : object):
+    '''
+    Function to process TXT files
+    '''
     loader = TextLoader(temp_file_path, autodetect_encoding=True)
 
     if splitter:
@@ -62,6 +74,9 @@ def get_txt(temp_file_path : str, title : str, config : dict, splitter : object)
     return title, document_chunks
 
 def get_srt(temp_file_path : str, title : str, config : dict, splitter : object):
+    '''
+    Function to process SRT files
+    '''
     subs = pysrt.open(temp_file_path)
 
     text = ''
@@ -85,6 +100,9 @@ def get_srt(temp_file_path : str, title : str, config : dict, splitter : object)
     return title, document_chunks
 
 def get_docx(temp_file_path : str, title : str, config : dict, splitter : object):
+    '''
+    Function to process DOCX files
+    '''
     loader = Docx2txtLoader(temp_file_path)
 
     if splitter:
@@ -104,6 +122,9 @@ def get_docx(temp_file_path : str, title : str, config : dict, splitter : object
     return title, document_chunks
 
 def get_youtube_transcript(url : str, config : dict, splitter : object):
+    '''
+    Function to retrieve youtube transcript and process text
+    '''
     loader = YoutubeLoader.from_youtube_url(
         url, 
         add_video_info=True,
@@ -125,6 +146,9 @@ def get_youtube_transcript(url : str, config : dict, splitter : object):
     return title, document_chunks
 
 def get_html(url : str, config : dict, splitter : object):
+    '''
+    Function to process websites via HTML files
+    '''
     loader = WebBaseLoader(url)
 
     if splitter:

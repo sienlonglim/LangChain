@@ -41,7 +41,10 @@ def main():
     with st.sidebar:
         # API option
         if st.session_state.usage_counter >= 5:
-            api_option = st.radio('API key usage', ['Host API key usage cap reached!'])
+            api_option = st.radio(
+                'API key usage', 
+                ['Host API key usage cap reached!'], 
+                help='Only a maximum of 5 documents are allowed')
         else:
             api_option = st.radio(
                 'API key usage', 

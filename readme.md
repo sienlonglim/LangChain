@@ -1,5 +1,14 @@
 # Retrieval Augmented Generation (RAG) with LangChain and OpenAI
-This project implements RAG using OpenAI's embedding models and LangChain's Python library
+<a href="https://github.com/sienlonglim/LangChain"><img alt="Static Badge" src="https://img.shields.io/badge/github-black?style=flat-square&logo=github"></a> <img alt="GitHub commit activity (branch)" src="https://img.shields.io/github/commit-activity/t/sienlonglim/LangChain">
+<a href="https://document-query-bot.streamlit.app/"><img alt="Static Badge" src="https://img.shields.io/badge/Streamlit%20App-red?style=flat-square&logo=streamlit&labelColor=white"></a> 
+
+This project implements RAG using OpenAI's embedding models and LangChain's Python library. Areas include:
+- Document splitting
+- Embeddings (OpenAI)
+- Vector database (Chroma / FAISS)
+- Semantic search types
+- Retrieval chain
+
 
 20231201 Fixes and MVP1:
 - chroma was changed to 0.3.29 for streamlit - did not work, reverted
@@ -25,5 +34,14 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - refactored to work on modules
 - allowed for wikipedia query with RAG
 
+20231213 updates:
+- refactored code to use tempfile to utilize langchain's loaders
+- added functionality to allow srt files
+- added webbaseloader and youtube loader
+- added an option to use Wikipedia as the retriever instead
+- added brief documentation
+- added debug mode (exceptions will be raised)
+
 Upcoming works:
 - Add logger
+- Introduce conversation retriever and memory states
