@@ -6,9 +6,6 @@ from langchain.chains import RetrievalQA
 from langchain.retrievers import WikipediaRetriever
 import streamlit as st
 
-def increment_api_usage_count(session_state : int, increment : int):
-    session_state.usage_counter += increment
-
 def get_embeddings(openai_api_key : str, documents : list,  config : dict, session_state : dict):
     # create the open-source embedding function
     model = config['embedding_options']['model']
@@ -31,7 +28,9 @@ def get_embeddings(openai_api_key : str, documents : list,  config : dict, sessi
     # If successful, increment the usage based on number of documents
     if openai_api_key == session_state.openai_api_key_host:
         docs_processed = len(session_state.doc_names)
-        increment_api_usage_count(session_state.usage_counter, docs_processed)
+
+        # Increase the usage counter
+        session_state.usage_counter += docs_processed
         print(f'Current usage_counter: {session_state.usage_counter}')
     return vector_db
 
@@ -71,7 +70,7 @@ def get_chain(session_state : dict, prompt_mode : str, source : str):
         qa_chain_prompt = PromptTemplate.from_template(template)
 
     # Build QuestionAnswer chain
-    if source == 'Uploaded documents':
+    if source == 'Uploaded documents / weblinks':
         qa_chain = RetrievalQA.from_chain_type(
             session_state.llm,
             retriever=session_state.vector_db.as_retriever(),

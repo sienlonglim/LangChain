@@ -43,27 +43,38 @@ def main():
         if st.session_state.usage_counter >= 5:
             api_option = st.radio('API key usage', ['Host API key usage cap reached!'])
         else:
-            api_option = st.radio('API key usage', ['Use my own API key', 'Use host API key (capped)'], help='Cap is counted by number of documents uploaded (max 5 in total)')
+            api_option = st.radio(
+                'API key usage', 
+                ['Use my own API key', 'Use host API key (capped)'], 
+                help='Cap is counted by number of documents uploaded (max 5 in total)'
+                )
         if (api_option == 'Use my own API key') or (api_option == 'Host API key usage cap reached!'):
             openai_api_key =st.text_input("Enter your API key")
         else:
             openai_api_key = st.session_state.openai_api_key_host
         
         # Document uploader
-        documents = st.file_uploader(label = 'Upload documents for embedding to VectorDB', 
-                                    help = 'Overwrites any existing files uploaded',
-                                    type = ['pdf', 'txt', 'docx'], 
-                                    accept_multiple_files=True)
-        if st.button('Upload', type='primary') and documents:
+        documents = st.file_uploader(
+            label = 'Upload documents for embedding to VectorDB', 
+            help = 'Overwrites any existing files uploaded',
+            type = ['pdf', 'txt', 'docx', 'srt'], 
+            accept_multiple_files=True
+            )
+        weblinks = st.text_area(label = 'Retrieve from website or youtube video transcript (Enter every link on a new line)').split('\n')
+
+        if st.button('Upload', type='primary') and (documents or weblinks):
             with st.status('Uploading... (this may take a while)', expanded=True) as status:
                 try:
                     st.write("Splitting documents...")
-                    document_chunks_full, st.session_state.doc_names = get_chunks(documents, st.session_state.config)
+                    document_chunks_full, st.session_state.doc_names = get_chunks(documents, weblinks, st.session_state.config)
                     st.write("Creating embeddings...")
                     st.session_state.vector_db = get_embeddings(openai_api_key, document_chunks_full, st.session_state.config, st.session_state)
                 except Exception as e:
-                    print(e)
-                    status.update(label='Error occured.', state='error', expanded=False)
+                    if st.session_state.config['debug']:
+                        raise e
+                    else:
+                        print(e)
+                        status.update(label='Error occured.', state='error', expanded=False)
                 else:
                     status.update(label='Embedding complete!', state='complete', expanded=False)
 
@@ -84,15 +95,21 @@ def main():
     # Query form and response
     with st.form('my_form'):
         user_input = st.text_area('Enter prompt:', value='Enter prompt here')
-        source = st.selectbox('Query from:', ('Uploaded documents', 'Wikipedia'),
+        source = st.selectbox('Query from:', ('Uploaded documents / weblinks', 'Wikipedia'),
                               help="Selecting Wikipedia will instead prompt from Wikipedia's repository")
 
         # Select for model and prompt template settings
-        prompt_mode = st.selectbox('Choose mode of prompt', ('Restricted', 'Creative'), 
-                                help='Restricted mode will reduce chances of LLM answering using out of context knowledge')
-        temperature = st.select_slider('Select temperature', options=[x / 10 for x in range(0, 21)], 
-                                    help='0 is recommended for restricted mode, 1 for creative mode. \n\
-                                        Going above 1 creates more unpredictable responses and takes longer.')
+        prompt_mode = st.selectbox(
+            'Choose mode of prompt', 
+            ('Restricted', 'Creative'),
+            help='Restricted mode will reduce chances of LLM answering using out of context knowledge'
+            )
+        temperature = st.select_slider(
+            'Select temperature', 
+            options=[x / 10 for x in range(0, 21)],
+            help='0 is recommended for restricted mode, 1 for creative mode. \n\
+                Going above 1 creates more unpredictable responses and takes longer.'
+            )
         
         # Display error if no API key given
         if not openai_api_key.startswith('sk-'):
@@ -105,12 +122,24 @@ def main():
         if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
             with st.spinner('Loading...'):
                 try:
-                    st.session_state.llm = get_llm(openai_api_key, temperature, st.session_state.config)
-                    st.session_state.qa_chain = get_chain(st.session_state, prompt_mode, source)
-                    result = get_response(user_input, st.session_state.qa_chain)
+                    st.session_state.llm = get_llm(
+                        openai_api_key, 
+                        temperature, 
+                        st.session_state.config
+                        )
+                    st.session_state.qa_chain = get_chain(
+                        st.session_state, 
+                        prompt_mode, 
+                        source)
+                    result = get_response(
+                        user_input, 
+                        st.session_state.qa_chain)
                 except Exception as e:
-                    print(e)
-                    st.error('Error occured, unable to process response!', icon="🚨")
+                    if st.session_state.config['debug']:
+                        raise e
+                    else:
+                        print(e)
+                        st.error('Error occured, unable to process response!', icon="🚨")
 
             if result:
                 # Display the result
