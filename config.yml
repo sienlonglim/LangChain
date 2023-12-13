@@ -1,4 +1,5 @@
 enable_host_api_key: True
+debug : False
 embedding_options:
   persist_directory: False # str or None
   db_option : 'FAISS'
@@ -6,11 +7,12 @@ embedding_options:
 llm: 'gpt-3.5-turbo-1106'
 splitter_options:
   use_splitter: True
+  split_by_token : True
   remove_leftover_delimiters: True
-  remove_pages: False
+  remove_chunks: False
   chunk_size : 800
   chunk_overlap : 80
   chunk_separators : ["\n\n", "\n", " ", ""]
-  front_pages_to_remove : None # int or None
-  last_pages_to_remove : None # int or None
+  front_chunks_to_remove : None # int or None
+  last_chunks_to_remove : None # int or None
   delimiters_to_remove : ['\t', '\n', '   ', '  '] #list of strings
