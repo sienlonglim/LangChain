@@ -1,21 +1,16 @@
 import streamlit as st
 import yaml
-from utils import *
-from vector_db import *
+from modules import InfoLoader, vector_db
 
-def get_settings():
+def create_session_state():
     '''
     Handles initializing of session_state variables
     '''
-    # Create empty list of document names
-    if 'doc_names' not in st.session_state:
-        st.session_state.doc_names = None
-    
     # Load config if not yet loaded
     if 'config' not in st.session_state:
         with open('config.yml', 'r') as file:
             st.session_state.config = yaml.safe_load(file)
-
+            
     # Create an API call counter, to cap usage
     if 'usage_counter' not in st.session_state:
         st.session_state.usage_counter = 0
@@ -27,15 +22,20 @@ def get_settings():
         else:
             st.session_state.openai_api_key_host = 'NA'
 
+@st.cache_resource
+def create_loader():
+    return InfoLoader.InfoLoader(st.session_state.config) 
+
 def main():
     '''
     Main Function
     '''
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
+    create_session_state()
+    loader = create_loader()
     result = None
     source = None
-    get_settings()
 
     # Sidebar
     with st.sidebar:
@@ -57,7 +57,7 @@ def main():
             openai_api_key = st.session_state.openai_api_key_host
         
         # Document uploader
-        documents = st.file_uploader(
+        uploaded_files = st.file_uploader(
             label = 'Upload documents for embedding to VectorDB', 
             help = 'Overwrites any existing files uploaded',
             type = ['pdf', 'txt', 'docx', 'srt'], 
@@ -65,13 +65,13 @@ def main():
             )
         weblinks = st.text_area(label = 'Retrieve from website or youtube video transcript (Enter every link on a new line)').split('\n')
 
-        if st.button('Upload', type='primary') and (documents or weblinks):
+        if st.button('Upload', type='primary') and (uploaded_files or weblinks):
             with st.status('Uploading... (this may take a while)', expanded=True) as status:
                 try:
                     st.write("Splitting documents...")
-                    document_chunks_full, st.session_state.doc_names = get_chunks(documents, weblinks, st.session_state.config)
+                    loader.get_chunks(uploaded_files, weblinks)
                     st.write("Creating embeddings...")
-                    st.session_state.vector_db = get_embeddings(openai_api_key, document_chunks_full, st.session_state.config, st.session_state)
+                    st.session_state.vector_db = vector_db.get_embeddings(openai_api_key, loader.document_chunks_full, loader.document_names)
                 except Exception as e:
                     if st.session_state.config['debug']:
                         raise e
@@ -85,9 +85,9 @@ def main():
     st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
 
     # Info bar
-    if st.session_state.doc_names:
+    if loader.document_names:
         doc_name_display = ''
-        for doc_count, doc_name in enumerate(st.session_state.doc_names):
+        for doc_count, doc_name in enumerate(loader.document_names):
             doc_name_display += str(doc_count+1) + '. ' + doc_name + '\n\n'
     else:
         doc_name_display = 'No documents uploaded yet!'
@@ -125,18 +125,16 @@ def main():
         if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
             with st.spinner('Loading...'):
                 try:
-                    st.session_state.llm = get_llm(
+                    st.session_state.llm = vector_db.get_llm(
                         openai_api_key, 
-                        temperature, 
-                        st.session_state.config
+                        temperature
                         )
-                    st.session_state.qa_chain = get_chain(
-                        st.session_state, 
+                    st.session_state.qa_chain = vector_db.get_chain(
                         prompt_mode, 
                         source)
-                    result = get_response(
-                        user_input, 
-                        st.session_state.qa_chain)
+                    result = vector_db.get_response(
+                        user_input
+                        )
                 except Exception as e:
                     if st.session_state.config['debug']:
                         raise e
@@ -154,7 +152,7 @@ def main():
                     st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata.get('page', 'NA') + ')')
                     st.write('-----------------------------------')
                 print('\tCompleted')
-
+#
 # Main
 if __name__ == '__main__':
    main()

@@ -15,6 +15,11 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - Add logger
 - Introduce conversation retriever and memory states
 
+### 20231215 Refactoring:
+- rewrote splitting portion using OOP and resource caching
+- reduce redundancy of inputs in functions when session_states can be called directly from global scope
+- archived old code
+
 ### 20231213 MVP3:
 - refactored code to use tempfile to utilize langchain's loaders
 - added functionality to allow srt files
@@ -23,15 +28,15 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - added brief documentation
 - added debug mode (exceptions will be raised)
 
-### 20231210 updates:
+### 20231210 Refactoring and updates:
 - refactored to work on modules
 - allowed for wikipedia query with RAG
 
-### 20231207 updates:
+### 20231207 Refactoring and updates:
 - refactored to use yaml config file
 - allowed for txt and docx files
 
-### 20231203 updates:
+### 20231203 Updates:
 - added status spinners
 - updated tooltips
 

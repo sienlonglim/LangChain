@@ -6,10 +6,10 @@ from langchain.chains import RetrievalQA
 from langchain.retrievers import WikipediaRetriever
 import streamlit as st
 
-def get_embeddings(openai_api_key : str, documents : list,  config : dict, session_state : dict):
+def get_embeddings(openai_api_key : str, document_chunks_full : list, document_names : list):
     # create the open-source embedding function
-    model = config['embedding_options']['model']
-    db_option = config['embedding_options']['db_option']
+    model = st.session_state.config['embedding_options']['model']
+    db_option = st.session_state.config['embedding_options']['db_option']
     # persist_directory = config['embedding_options']['persist_directory']
 
     embedding_function = OpenAIEmbeddings(deployment="SL-document_embedder",
@@ -21,21 +21,18 @@ def get_embeddings(openai_api_key : str, documents : list,  config : dict, sessi
     print('Initializing vector_db')
     if db_option == 'FAISS':
         print('\tRunning in memory')
-        vector_db = FAISS.from_documents(documents = documents, 
+        vector_db = FAISS.from_documents(documents = document_chunks_full, 
                                         embedding = embedding_function)
     print('\tCompleted')
 
     # If successful, increment the usage based on number of documents
-    if openai_api_key == session_state.openai_api_key_host:
-        docs_processed = len(session_state.doc_names)
-
-        # Increase the usage counter
-        session_state.usage_counter += docs_processed
-        print(f'Current usage_counter: {session_state.usage_counter}')
+    if openai_api_key == st.session_state.openai_api_key_host:
+        st.session_state.usage_counter += len(document_names)
+        print(f'Current usage_counter: {st.session_state.usage_counter}')
     return vector_db
 
-def get_llm(openai_api_key : str, temperature : int, config : dict):
-    model_name = config['llm']
+def get_llm(openai_api_key : str, temperature : int):
+    model_name = st.session_state.config['llm']
     # Instantiate the llm object 
     print('Instantiating the llm')
     try:
@@ -49,7 +46,7 @@ def get_llm(openai_api_key : str, temperature : int, config : dict):
         print('\tCompleted')
     return llm 
 
-def get_chain(session_state : dict, prompt_mode : str, source : str):
+def get_chain(prompt_mode : str, source : str):
     print('Creating chain from template')
     if prompt_mode == 'Restricted':
         # Build prompt template
@@ -72,8 +69,8 @@ def get_chain(session_state : dict, prompt_mode : str, source : str):
     # Build QuestionAnswer chain
     if source == 'Uploaded documents / weblinks':
         qa_chain = RetrievalQA.from_chain_type(
-            session_state.llm,
-            retriever=session_state.vector_db.as_retriever(),
+            st.session_state.llm,
+            retriever=st.session_state.vector_db.as_retriever(),
             return_source_documents=True,
             chain_type_kwargs={"prompt": qa_chain_prompt}
             )
@@ -86,7 +83,7 @@ def get_chain(session_state : dict, prompt_mode : str, source : str):
             features="lxml"
             )
         qa_chain = RetrievalQA.from_chain_type(
-            session_state.llm,
+            st.session_state.llm,
             retriever=wiki_retriever,
             return_source_documents=True,
             chain_type_kwargs={"prompt": qa_chain_prompt}
@@ -95,8 +92,8 @@ def get_chain(session_state : dict, prompt_mode : str, source : str):
     print('\tCompleted')
     return qa_chain
 
-def get_response(user_input : str, qa_chain : object):
+def get_response(user_input : str):
     # Query and Response
     print('Getting response from server')
-    result = qa_chain({"query": user_input})
+    result = st.session_state.qa_chain({"query": user_input})
     return result

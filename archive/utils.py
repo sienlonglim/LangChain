@@ -159,7 +159,6 @@ def get_html(url : str, config : dict, splitter : object):
     if config['splitter_options']['remove_chunks']:
         document_chunks = remove_chunks(document_chunks, config)
     
-    print(document_chunks)
     title = document_chunks[0].metadata['title']
 
     print(f'\t\tExtracted no. of chunks: {len(document_chunks)}')
