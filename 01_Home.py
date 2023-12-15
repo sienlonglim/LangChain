@@ -35,7 +35,7 @@ def main():
     create_session_state()
     loader, vector_db = create_loader()  
 
-    # Sidebar
+    #------------------------------------ SIDEBAR ----------------------------------------#
     with st.sidebar:
         # API option, whether to use host's API key (must be enabled by config), and also to cap usage
         if st.session_state.usage_counter >= 5:
@@ -85,9 +85,8 @@ def main():
                     else:
                         status.update(label='Embedding complete!', state='complete', expanded=False)
 
-    # Main page area
-    # st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
-    st.title("Welcome to Sien Long's RAG Bot")
+    #------------------------------------- MAIN PAGE -----------------------------------------#
+    st.markdown("## :rocket: Welcome to Sien Long's RAG Bot")
 
     # Info bar
     if vector_db.document_names:
@@ -143,16 +142,6 @@ def main():
                         source
                     )
                     result = vector_db.get_response(user_input)
-                    # st.session_state.llm = vector_db.get_llm(
-                    #     openai_api_key, 
-                    #     temperature
-                    #     )
-                    # st.session_state.qa_chain = vector_db.get_chain(
-                    #     prompt_mode, 
-                    #     source)
-                    # result = vector_db.get_response(
-                    #     user_input
-                    #     )
                 except Exception as e:
                     if st.session_state.config['debug']:
                         raise e
@@ -170,7 +159,7 @@ def main():
                     st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata.get('page', 'NA') + ')')
                     st.write('-----------------------------------')
                 print('\tCompleted')
-#
-# Main
+
+
 if __name__ == '__main__':
    main()

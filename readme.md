@@ -16,8 +16,8 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 - Introduce conversation retriever and memory states
 
 ### 20231215 Refactoring:
-- rewrote splitting portion using OOP and resource caching
-- reduce redundancy of inputs in functions when session_states can be called directly from global scope
+- rewrote main operations into OOP 
+- added resource caching
 - archived old code
 
 ### 20231213 MVP3:
