@@ -1,6 +1,6 @@
 import streamlit as st
 import yaml
-from modules import InfoLoader, vector_db
+from modules import InfoLoader, VectorDB
 
 def create_session_state():
     '''
@@ -24,7 +24,7 @@ def create_session_state():
 
 @st.cache_resource
 def create_loader():
-    return InfoLoader.InfoLoader(st.session_state.config) 
+    return InfoLoader.InfoLoader(st.session_state.config), VectorDB.VectorDB(st.session_state.config)
 
 def main():
     '''
@@ -33,85 +33,93 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     create_session_state()
-    loader = create_loader()
-    result = None
-    source = None
+    loader, vector_db = create_loader()  
 
     # Sidebar
     with st.sidebar:
-        # API option
+        # API option, whether to use host's API key (must be enabled by config), and also to cap usage
         if st.session_state.usage_counter >= 5:
             api_option = st.radio(
                 'API key usage', 
                 ['Host API key usage cap reached!'], 
-                help='Only a maximum of 5 documents are allowed')
+                help='Only a maximum of 5 artefacts are allowed, further uploading has been disabled')
         else:
             api_option = st.radio(
                 'API key usage', 
                 ['Use my own API key', 'Use host API key (capped)'], 
                 help='Cap is counted by number of documents uploaded (max 5 in total)'
                 )
-        if (api_option == 'Use my own API key') or (api_option == 'Host API key usage cap reached!'):
+        # Response to API option
+        if (api_option == 'Use my own API key'):
             openai_api_key =st.text_input("Enter your API key")
         else:
             openai_api_key = st.session_state.openai_api_key_host
         
         # Document uploader
         uploaded_files = st.file_uploader(
-            label = 'Upload documents for embedding to VectorDB', 
+            label = 'Upload documents for embedding', 
             help = 'Overwrites any existing files uploaded',
             type = ['pdf', 'txt', 'docx', 'srt'], 
             accept_multiple_files=True
             )
+        st.write('And / Or')
         weblinks = st.text_area(label = 'Retrieve from website or youtube video transcript (Enter every link on a new line)').split('\n')
 
-        if st.button('Upload', type='primary') and (uploaded_files or weblinks):
-            with st.status('Uploading... (this may take a while)', expanded=True) as status:
-                try:
-                    st.write("Splitting documents...")
-                    loader.get_chunks(uploaded_files, weblinks)
-                    st.write("Creating embeddings...")
-                    st.session_state.vector_db = vector_db.get_embeddings(openai_api_key, loader.document_chunks_full, loader.document_names)
-                except Exception as e:
-                    if st.session_state.config['debug']:
-                        raise e
+        if api_option != 'Host API key usage cap reached!':
+            if st.button('Upload', type='primary') and (uploaded_files or weblinks):
+                with st.status('Uploading... (this may take a while)', expanded=True) as status:
+                    try:
+                        st.write("Splitting documents...")
+                        loader.get_chunks(uploaded_files, weblinks)
+                        st.write("Creating embeddings...")
+                        vector_db.create_embedding_function(openai_api_key)
+                        vector_db.initialize_database(openai_api_key, loader.document_chunks_full, loader.document_names)
+                        # st.session_state.vector_db = vector_db.get_embeddings(openai_api_key, loader.document_chunks_full, loader.document_names)
+
+                    except Exception as e:
+                        if st.session_state.config['debug']:
+                            raise e
+                        else:
+                            print(e)
+                            status.update(label='Error occured.', state='error', expanded=False)
                     else:
-                        print(e)
-                        status.update(label='Error occured.', state='error', expanded=False)
-                else:
-                    status.update(label='Embedding complete!', state='complete', expanded=False)
+                        status.update(label='Embedding complete!', state='complete', expanded=False)
 
     # Main page area
-    st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
+    # st.markdown("### :rocket: Welcome to Sien Long's Document Query Bot")
+    st.title("Welcome to Sien Long's RAG Bot")
 
     # Info bar
-    if loader.document_names:
+    if vector_db.document_names:
         doc_name_display = ''
-        for doc_count, doc_name in enumerate(loader.document_names):
+        for doc_count, doc_name in enumerate(vector_db.document_names):
             doc_name_display += str(doc_count+1) + '. ' + doc_name + '\n\n'
     else:
         doc_name_display = 'No documents uploaded yet!'
     st.info(f"Current loaded document(s): \n\n {doc_name_display}", icon='ℹ️')
-    if not openai_api_key:
+    if (not openai_api_key.startswith('sk-')) or (openai_api_key=='NA'):
         st.write('Enter your API key on the sidebar to begin')
 
     # Query form and response
     with st.form('my_form'):
         user_input = st.text_area('Enter prompt:', value='Enter prompt here')
         source = st.selectbox('Query from:', ('Uploaded documents / weblinks', 'Wikipedia'),
-                              help="Selecting Wikipedia will instead prompt from Wikipedia's repository")
+                              help = "Selecting Wikipedia will instead prompt from Wikipedia's repository"
+                              )
 
         # Select for model and prompt template settings
         prompt_mode = st.selectbox(
             'Choose mode of prompt', 
-            ('Restricted', 'Creative'),
-            help='Restricted mode will reduce chances of LLM answering using out of context knowledge'
+            options = ('Restricted', 'Unrestricted'),
+            help='Restricted mode will reduce chances of LLM answering using out of context knowledge',
+            # disabled = missing_api_key
             )
         temperature = st.select_slider(
             'Select temperature', 
             options=[x / 10 for x in range(0, 21)],
             help='0 is recommended for restricted mode, 1 for creative mode. \n\
-                Going above 1 creates more unpredictable responses and takes longer.'
+                Going above 1 creates more unpredictable responses and takes longer.',
+            # disabled = missing_api_key
             )
         
         # Display error if no API key given
@@ -125,16 +133,26 @@ def main():
         if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
             with st.spinner('Loading...'):
                 try:
-                    st.session_state.llm = vector_db.get_llm(
-                        openai_api_key, 
+                    result = None
+                    vector_db.create_llm(
+                        openai_api_key,
                         temperature
-                        )
-                    st.session_state.qa_chain = vector_db.get_chain(
-                        prompt_mode, 
-                        source)
-                    result = vector_db.get_response(
-                        user_input
-                        )
+                    )
+                    vector_db.create_chain(
+                        prompt_mode,
+                        source
+                    )
+                    result = vector_db.get_response(user_input)
+                    # st.session_state.llm = vector_db.get_llm(
+                    #     openai_api_key, 
+                    #     temperature
+                    #     )
+                    # st.session_state.qa_chain = vector_db.get_chain(
+                    #     prompt_mode, 
+                    #     source)
+                    # result = vector_db.get_response(
+                    #     user_input
+                    #     )
                 except Exception as e:
                     if st.session_state.config['debug']:
                         raise e

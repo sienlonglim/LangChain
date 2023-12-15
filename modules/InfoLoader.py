@@ -13,6 +13,7 @@ class InfoLoader():
             config - dictionary from yaml file, containing all important parameters
         '''
         self.config = config
+        self.remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
 
         # Main list of all documents
         self.document_chunks_full = []
@@ -33,8 +34,7 @@ class InfoLoader():
                     )
         else:
             self.splitter = None
-
-        self.remove_leftover_delimiters = config['splitter_options']['remove_leftover_delimiters']
+        print('InfoLoader instance created')
 
     def get_chunks(self, uploaded_files, weblinks):
         def remove_delimiters(document_chunks : list):
@@ -110,7 +110,6 @@ class InfoLoader():
             if self.splitter:
                 document_chunks = self.splitter.split_documents(document_chunks)
 
-            print(document_chunks)
             # Update the metadata
             for chunk in document_chunks:
                 chunk.metadata['source'] = title
