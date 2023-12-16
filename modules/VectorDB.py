@@ -6,7 +6,7 @@ from langchain.chains import RetrievalQA
 from langchain.retrievers import WikipediaRetriever
 from langchain.callbacks import get_openai_callback
 import logging
-logger = logging.getLogger(__name__ + 'DB')
+logger = logging.getLogger(__name__)
 
 class VectorDB():
     def __init__(self, config):

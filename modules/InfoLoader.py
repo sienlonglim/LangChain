@@ -5,7 +5,7 @@ from langchain.document_loaders import PyMuPDFLoader, Docx2txtLoader, YoutubeLoa
 from langchain.schema import Document
 from tempfile import NamedTemporaryFile
 import logging
-logger = logging.getLogger(__name__ + 'Loader')
+logger = logging.getLogger(__name__)
 
 class InfoLoader():
     def __init__(self, config):
