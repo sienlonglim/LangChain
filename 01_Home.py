@@ -66,10 +66,10 @@ def main():
     initialize_session_state()
     # log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
     
-    if 'logger_created' not in st.session_state:
-        logger = configure_logging('logs/python_logger.log')
-        st.session_state['logger_created'] = True
+    # if 'logger_created' not in st.session_state:
+    #     st.session_state['logger_created'] = True
     
+    logger = configure_logging('logs/python_logger.log')
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
