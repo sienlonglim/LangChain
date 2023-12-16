@@ -32,7 +32,7 @@ class VectorDB():
                 documents = document_chunks, 
                 embedding = self.embedding_function
                 )
-        logger.info('\tCompleted')
+        logger.info('\tCompleted\n\n')
         self.document_names = document_names
 
     def create_llm(self, openai_api_key : str, temperature : int):
@@ -105,6 +105,7 @@ class VectorDB():
         with get_openai_callback() as cb:
             result = self.qa_chain({"query": user_input})
             logger.info(f"\n{cb}")
+        logger.info('\tCompleted\n\n')
         return result
 
 

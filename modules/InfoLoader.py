@@ -228,7 +228,7 @@ class InfoLoader():
                 self.document_names.append(title)
                 self.document_chunks_full.extend(document_chunks)
           
-        logger.info(f'\tNumber of document chunks extracted in total: {len(self.document_chunks_full)}')
+        logger.info(f'\tNumber of document chunks extracted in total: {len(self.document_chunks_full)}\n\n')
 
     
 

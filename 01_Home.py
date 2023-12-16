@@ -63,12 +63,7 @@ def main():
     '''
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
-    initialize_session_state()
-    # log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
-    
-    # if 'logger_created' not in st.session_state:
-    #     st.session_state['logger_created'] = True
-    
+    initialize_session_state()    
     logger = configure_logging('logs/python_logger.log')
     loader, vector_db = get_resources()  
 
@@ -193,8 +188,6 @@ def main():
                 for document in result['source_documents']:
                     st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata.get('page', 'na') + ')')
                     st.write('-----------------------------------')
-                logger.info('\tCompleted')
-
 
 if __name__ == '__main__':
    main()
