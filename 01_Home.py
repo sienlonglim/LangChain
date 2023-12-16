@@ -10,6 +10,9 @@ def configure_logging(file_path, level=logging.INFO):
     '''
     Initiates the logger, runs once due to caching
     '''
+    print(st.logger._loggers)  
+    # streamlit_root_logger = logging.getLogger(st.__name__)
+
     logger = logging.getLogger()
     logger.setLevel(level)
 

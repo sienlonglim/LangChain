@@ -21,3 +21,12 @@ base = "light"
 # Font family for all text in the app, except code blocks. One of "sans serif",
 # "serif", or "monospace".
 font = "sans serif"
+
+[logger]
+
+# Level of logging: 'error', 'warning', 'info', or 'debug'.
+# Default: 'info'
+level = "info"
+
+# Default: "%(asctime)s %(message)s"
+messageFormat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
