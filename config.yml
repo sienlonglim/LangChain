@@ -1,7 +1,7 @@
-local : False
+local : null
 enable_host_api_key: True
 embedding_options:
-  persist_directory: False # str or None
+  persist_directory: null # str or None
   db_option : 'FAISS'
   model : 'text-embedding-ada-002'
 llm: 'gpt-3.5-turbo-1106'
@@ -9,10 +9,10 @@ splitter_options:
   use_splitter: True
   split_by_token : True
   remove_leftover_delimiters: True
-  remove_chunks: False
+  remove_chunks: null
   chunk_size : 800
   chunk_overlap : 80
   chunk_separators : ["\n\n", "\n", " ", ""]
-  front_chunks_to_remove : None # int or None
-  last_chunks_to_remove : None # int or None
+  front_chunks_to_remove : null # int or None
+  last_chunks_to_remove : null # int or None
   delimiters_to_remove : ['\t', '\n', '   ', '  '] #list of strings
