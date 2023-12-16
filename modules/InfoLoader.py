@@ -39,6 +39,10 @@ class InfoLoader():
         logger.info('InfoLoader instance created')
 
     def get_chunks(self, uploaded_files, weblinks):
+        # Main list of all documents
+        self.document_chunks_full = []
+        self.document_names = []
+        
         def remove_delimiters(document_chunks : list):
             '''
             Helper function to remove remaining delimiters in document chunks
