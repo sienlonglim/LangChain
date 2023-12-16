@@ -15,7 +15,6 @@ def configure_logging(file_path=None, streaming=None, level=logging.INFO):
     logger = logging.getLogger()
     logger.setLevel(level)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.setFormatter(formatter)
     
     # Add a filehandler to output to a file
     if file_path:
