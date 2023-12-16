@@ -65,7 +65,7 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()    
-    if st.session_state.config['run_locally']:
+    if st.session_state.config['local']:
         logger = configure_logging('app.log', streaming=True)
     else: 
         logger = configure_logging()

@@ -1,4 +1,4 @@
-run_locally : False
+local : False
 enable_host_api_key: True
 embedding_options:
   persist_directory: False # str or None
