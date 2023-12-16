@@ -20,13 +20,13 @@ def configure_logging(file_path, level=logging.INFO):
     file_handler.setLevel(level)
 
     # Add a streamhandler to output to console
-    # stream_handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler()
 
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
-    # logger.addHandler(stream_handler)
+    logger.addHandler(stream_handler)
 
     return logger
 
@@ -64,8 +64,12 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()
-    log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
-    logger = configure_logging(log_file_path)
+    # log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
+    
+    if 'logger_created' not in st.session_state:
+        logger = configure_logging('logs/python_logger.log')
+        st.session_state['logger_created'] = True
+    
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
