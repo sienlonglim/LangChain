@@ -26,6 +26,7 @@ def configure_logging(file_path=None, streaming=None, level=logging.INFO):
     # Add a streamhandler to output to console
     if streaming:
         stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
     
 
@@ -66,7 +67,7 @@ def main():
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()    
     if st.session_state.config['local']:
-        logger = configure_logging('app.log', streaming=True)
+        logger = configure_logging('app.log')
     else: 
         logger = configure_logging(streaming=True)
     loader, vector_db = get_resources()  
