@@ -5,6 +5,7 @@ from langchain.document_loaders import PyMuPDFLoader, Docx2txtLoader, YoutubeLoa
 from langchain.schema import Document
 from tempfile import NamedTemporaryFile
 import logging
+logger = logging.getLogger(__name__)
 
 class InfoLoader():
     def __init__(self, config):
@@ -35,7 +36,7 @@ class InfoLoader():
                     )
         else:
             self.splitter = None
-        logging.info('InfoLoader instance created')
+        logger.info('InfoLoader instance created')
 
     def get_chunks(self, uploaded_files, weblinks):
         def remove_delimiters(document_chunks : list):
@@ -58,7 +59,7 @@ class InfoLoader():
                 del document_chunks[0]
             for _ in range(end):
                 document_chunks.pop()
-                logging.info(f'\tNumber of pages after skipping: {len(document_chunks)}')
+                logger.info(f'\tNumber of pages after skipping: {len(document_chunks)}')
             return document_chunks
 
         def get_pdf(temp_file_path : str, title : str):
@@ -75,7 +76,7 @@ class InfoLoader():
             if 'title' in document_chunks[0].metadata.keys():
                 title = document_chunks[0].metadata['title']
 
-            logging.info(f"\t\tOriginal no. of pages: {document_chunks[0].metadata['total_pages']}")
+            logger.info(f"\t\tOriginal no. of pages: {document_chunks[0].metadata['total_pages']}")
 
             return title, document_chunks
 
@@ -174,7 +175,7 @@ class InfoLoader():
 
             # Get the file type and file name
             file_type = file.name.split('.')[-1].lower()
-            logging.info(f'\tSplitting file {file_index+1} : {file.name}')
+            logger.info(f'\tSplitting file {file_index+1} : {file.name}')
             file_name = ''.join(file.name.split('.')[:-1])
 
             with NamedTemporaryFile(delete=False, suffix=f".{file_type}") as temp_file:
@@ -197,17 +198,17 @@ class InfoLoader():
             if self.config['splitter_options']['remove_chunks']:
                 document_chunks = remove_chunks(document_chunks)
 
-            logging.info(f'\t\tExtracted no. of chunks: {len(document_chunks)}')
+            logger.info(f'\t\tExtracted no. of chunks: {len(document_chunks)}')
             self.document_names.append(title)
             self.document_chunks_full.extend(document_chunks)
 
         # Handle youtube links:
         if weblinks[0] != '':
-            logging.info(f'Splitting weblinks: total of {len(weblinks)}')
+            logger.info(f'Splitting weblinks: total of {len(weblinks)}')
             
             # Handle link by link
             for link_index, link in enumerate(weblinks):
-                logging.info(f'\tSplitting link {link_index+1} : {link}')
+                logger.info(f'\tSplitting link {link_index+1} : {link}')
                 if 'youtube' in link:
                     title, document_chunks = get_youtube_transcript(link)
                 else:
@@ -223,7 +224,7 @@ class InfoLoader():
                 self.document_names.append(title)
                 self.document_chunks_full.extend(document_chunks)
           
-        logging.info(f'\tNumber of document chunks extracted in total: {len(self.document_chunks_full)}')
+        logger.info(f'\tNumber of document chunks extracted in total: {len(self.document_chunks_full)}')
 
     
 

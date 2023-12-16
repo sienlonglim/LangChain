@@ -3,7 +3,30 @@ import yaml
 from modules.InfoLoader import InfoLoader
 from modules.VectorDB import VectorDB
 import logging
+import os
 
+@st.cache_resource
+def configure_logging(file_path, level=logging.INFO):
+    '''
+    Initiates the logger, runs once due to caching
+    '''
+    logger = logging.getLogger()
+    logger.setLevel(level)
+
+    # Add a filehandler to output to a file
+    file_handler = logging.FileHandler(file_path)
+    file_handler.setLevel(level)
+
+    # Add a streamhandler to output to console
+    stream_handler = logging.StreamHandler()
+
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    return logger
 
 def initialize_session_state():
     '''
@@ -24,18 +47,12 @@ def initialize_session_state():
             st.session_state.openai_api_key_host = st.secrets['openai_api_key']
         else:
             st.session_state.openai_api_key_host = 'NA'
-    
-    if 'logger' not in st.session_state:
-        logging.basicConfig(
-            level=logging.INFO,
-            filename='app.log', 
-            filemode='a', 
-            format='%(levelname)s - %(asctime)s - %(message)s', 
-            datefmt='%d-%b-%y %H:%M:%S'
-            )
         
 @st.cache_resource
 def get_resources():
+    '''
+    Initializes the customer modules
+    '''
     return InfoLoader(st.session_state.config), VectorDB(st.session_state.config)
 
 def main():
@@ -45,6 +62,8 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()
+    log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
+    logger = configure_logging(log_file_path)
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
@@ -88,18 +107,14 @@ def main():
                         vector_db.initialize_database(loader.document_chunks_full, loader.document_names)
 
                     except Exception as e:
-                        logging.error('Exception during Splitting / embedding', exc_info=True)
-                        if st.session_state.config['debug']:
-                            raise e
-                        else:
-                            print(e)
-                            status.update(label='Error occured.', state='error', expanded=False)
+                        logger.error('Exception during Splitting / embedding', exc_info=True)
+                        status.update(label='Error occured.', state='error', expanded=False)
                     else:
                         # If successful, increment the usage based on number of documents
                         if openai_api_key == st.session_state.openai_api_key_host:
                             st.session_state.usage_counter += len(loader.document_names)
-                            print(f'Current usage counter: {st.session_state.usage_counter}')
-                        logging.info(f'Uploaded: {loader.document_names}')
+                            logger.info(f'Current usage counter: {st.session_state.usage_counter}')
+                        logger.info(f'Uploaded: {loader.document_names}')
                         status.update(label='Embedding complete!', state='complete', expanded=False)
 
     #------------------------------------- MAIN PAGE -----------------------------------------#
@@ -160,12 +175,8 @@ def main():
                     )
                     result = vector_db.get_response(user_input)
                 except Exception as e:
-                    logging.error('Exception during Querying', exc_info=True)
-                    if st.session_state.config['debug']:
-                        raise e
-                    else:
-                        print(e)
-                        st.error('Error occured, unable to process response!', icon="🚨")
+                    logger.error('Exception during Querying', exc_info=True)
+                    st.error('Error occured, unable to process response!', icon="🚨")
 
             if result:
                 # Display the result
@@ -176,7 +187,7 @@ def main():
                 for document in result['source_documents']:
                     st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata.get('page', 'na') + ')')
                     st.write('-----------------------------------')
-                print('\tCompleted')
+                logger.info('\tCompleted')
 
 
 if __name__ == '__main__':

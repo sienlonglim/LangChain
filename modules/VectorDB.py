@@ -6,16 +6,17 @@ from langchain.chains import RetrievalQA
 from langchain.retrievers import WikipediaRetriever
 from langchain.callbacks import get_openai_callback
 import logging
+logger = logging.getLogger(__name__)
 
 class VectorDB():
     def __init__(self, config):
         self.config = config
         self.db_option = config['embedding_options']['db_option']
         self.document_names = None
-        logging.info('VectorDB instance created')
+        logger.info('VectorDB instance created')
 
     def create_embedding_function(self, openai_api_key : str):
-        logging.info('Creating embedding function')
+        logger.info('Creating embedding function')
         self.embedding_function = OpenAIEmbeddings(
             deployment="SL-document_embedder",
             model=self.config['embedding_options']['model'],
@@ -24,19 +25,19 @@ class VectorDB():
     
     def initialize_database(self, document_chunks : list, document_names : list):
         # Track tokem usage
-        logging.info('Initializing vector_db')
+        logger.info('Initializing vector_db')
         if self.db_option == 'FAISS':
-            logging.info('\tRunning in memory')
+            logger.info('\tRunning in memory')
             self.vector_db = FAISS.from_documents(
                 documents = document_chunks, 
                 embedding = self.embedding_function
                 )
-        logging.info('\tCompleted')
+        logger.info('\tCompleted')
         self.document_names = document_names
 
     def create_llm(self, openai_api_key : str, temperature : int):
         # Instantiate the llm object 
-        logging.info('Instantiating the llm')
+        logger.info('Instantiating the llm')
         self.llm = ChatOpenAI(
             model_name=self.config['llm'],
             temperature=temperature,
@@ -44,7 +45,7 @@ class VectorDB():
             )
 
     def create_chain(self, prompt_mode : str, source : str):
-        logging.info('Creating chain from template')
+        logger.info('Creating chain from template')
         if prompt_mode == 'Restricted':
             # Build prompt template
             template = """Use the following pieces of context to answer the question at the end. \
@@ -96,14 +97,14 @@ class VectorDB():
                 chain_type_kwargs={"prompt": qa_chain_prompt}
                 )
             
-        logging.info('\tCompleted')
+        logger.info('\tCompleted')
     
     def get_response(self, user_input : str):
         # Query and Response
-        logging.info('Getting response from server')
+        logger.info('Getting response from server')
         with get_openai_callback() as cb:
             result = self.qa_chain({"query": user_input})
-            logging.info(f"\n{cb}")
+            logger.info(f"\n{cb}")
         return result
 
 

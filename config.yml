@@ -1,5 +1,4 @@
 enable_host_api_key: True
-debug : False
 embedding_options:
   persist_directory: False # str or None
   db_option : 'FAISS'
