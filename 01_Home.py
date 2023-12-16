@@ -18,7 +18,7 @@ def configure_logging(file_path=None, streaming=None, level=logging.INFO):
     
     # Add a filehandler to output to a file
     if file_path:
-        file_handler = logging.FileHandler(file_path, mode='w')
+        file_handler = logging.FileHandler(file_path, mode='a')
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
@@ -65,7 +65,10 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()    
-    logger = configure_logging()
+    if st.session_state.config['run_locally']:
+        logger = configure_logging('app.log', streaming=True)
+    else: 
+        logger = configure_logging()
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
