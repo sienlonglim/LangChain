@@ -16,7 +16,7 @@ def configure_logging(file_path, level=logging.INFO):
     logger.setLevel(level)
 
     # Add a filehandler to output to a file
-    file_handler = logging.FileHandler(file_path)
+    file_handler = logging.FileHandler(file_path, mode='w')
     file_handler.setLevel(level)
 
     # Add a streamhandler to output to console
@@ -66,7 +66,6 @@ def main():
     initialize_session_state()
     log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
     logger = configure_logging(log_file_path)
-    logger.info(st.logger._loggers)  
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
