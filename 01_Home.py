@@ -68,7 +68,7 @@ def main():
     if st.session_state.config['local']:
         logger = configure_logging('app.log', streaming=True)
     else: 
-        logger = configure_logging()
+        logger = configure_logging(streaming=True)
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
