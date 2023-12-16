@@ -6,4 +6,3 @@ ignore
 .venv
 __pycache__
 app.log
-logs
