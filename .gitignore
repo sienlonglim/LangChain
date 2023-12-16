@@ -1,6 +1,8 @@
 .env
 .env.rtf
+.devcontainer
 ignore
 .DS_Store
 .venv
 __pycache__
+app.log

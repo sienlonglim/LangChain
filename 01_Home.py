@@ -1,8 +1,11 @@
 import streamlit as st
 import yaml
-from modules import InfoLoader, VectorDB
+from modules.InfoLoader import InfoLoader
+from modules.VectorDB import VectorDB
+import logging
 
-def create_session_state():
+
+def initialize_session_state():
     '''
     Handles initializing of session_state variables
     '''
@@ -21,19 +24,28 @@ def create_session_state():
             st.session_state.openai_api_key_host = st.secrets['openai_api_key']
         else:
             st.session_state.openai_api_key_host = 'NA'
-
+    
+    if 'logger' not in st.session_state:
+        logging.basicConfig(
+            level=logging.INFO,
+            filename='app.log', 
+            filemode='a', 
+            format='%(levelname)s - %(asctime)s - %(message)s', 
+            datefmt='%d-%b-%y %H:%M:%S'
+            )
+        
 @st.cache_resource
-def create_loader():
-    return InfoLoader.InfoLoader(st.session_state.config), VectorDB.VectorDB(st.session_state.config)
+def get_resources():
+    return InfoLoader(st.session_state.config), VectorDB(st.session_state.config)
 
 def main():
     '''
-    Main Function
+    Main Function for streamlit interface
     '''
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
-    create_session_state()
-    loader, vector_db = create_loader()  
+    initialize_session_state()
+    loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
     with st.sidebar:
@@ -73,16 +85,21 @@ def main():
                         loader.get_chunks(uploaded_files, weblinks)
                         st.write("Creating embeddings...")
                         vector_db.create_embedding_function(openai_api_key)
-                        vector_db.initialize_database(openai_api_key, loader.document_chunks_full, loader.document_names)
-                        # st.session_state.vector_db = vector_db.get_embeddings(openai_api_key, loader.document_chunks_full, loader.document_names)
+                        vector_db.initialize_database(loader.document_chunks_full, loader.document_names)
 
                     except Exception as e:
+                        logging.error('Exception during Splitting / embedding', exc_info=True)
                         if st.session_state.config['debug']:
                             raise e
                         else:
                             print(e)
                             status.update(label='Error occured.', state='error', expanded=False)
                     else:
+                        # If successful, increment the usage based on number of documents
+                        if openai_api_key == st.session_state.openai_api_key_host:
+                            st.session_state.usage_counter += len(loader.document_names)
+                            print(f'Current usage counter: {st.session_state.usage_counter}')
+                        logging.info(f'Uploaded: {loader.document_names}')
                         status.update(label='Embedding complete!', state='complete', expanded=False)
 
     #------------------------------------- MAIN PAGE -----------------------------------------#
@@ -128,7 +145,7 @@ def main():
             else:
                 st.warning('Please enter your OpenAI API key!', icon='⚠')
 
-        # Submit a prompt
+        #----------------------------------------- Submit a prompt ----------------------------------#
         if st.form_submit_button('Submit', type='primary') and openai_api_key.startswith('sk-'):
             with st.spinner('Loading...'):
                 try:
@@ -143,6 +160,7 @@ def main():
                     )
                     result = vector_db.get_response(user_input)
                 except Exception as e:
+                    logging.error('Exception during Querying', exc_info=True)
                     if st.session_state.config['debug']:
                         raise e
                     else:
@@ -156,7 +174,7 @@ def main():
                 st.write(' ')
                 st.info('Sources', icon='📚')
                 for document in result['source_documents']:
-                    st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata.get('page', 'NA') + ')')
+                    st.write(document.page_content + '\n\n' + document.metadata['source'] + ' (pg ' + document.metadata.get('page', 'na') + ')')
                     st.write('-----------------------------------')
                 print('\tCompleted')
 

@@ -12,8 +12,12 @@ This project implements RAG using OpenAI's embedding models and LangChain's Pyth
 ![Screenshot](images/framework.png)
 
 ## Upcoming works:
-- Add logger
 - Introduce conversation retriever and memory states
+- Log embedding costs
+
+### 20231216 Logging & token tracing:
+- Added a logger
+- Added callback to record cost of queries
 
 ### 20231215 Refactoring:
 - rewrote main operations into OOP 
