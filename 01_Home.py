@@ -10,7 +10,6 @@ def configure_logging(file_path, level=logging.INFO):
     '''
     Initiates the logger, runs once due to caching
     '''
-    print(st.logger._loggers)  
     # streamlit_root_logger = logging.getLogger(st.__name__)
 
     logger = logging.getLogger()
@@ -67,6 +66,7 @@ def main():
     initialize_session_state()
     log_file_path = os.path.join(os.getcwd(), 'logs', f'python_logger.log')
     logger = configure_logging(log_file_path)
+    logger.info(st.logger._loggers)  
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
