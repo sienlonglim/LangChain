@@ -155,8 +155,10 @@ class InfoLoader():
             if self.splitter:
                 document_chunks = self.splitter.split_documents(loader.load())
             else:
-                document_chunks = loader.load_and_split()          
+                document_chunks = loader.load_and_split()   
+                       
             title = document_chunks[0].metadata['title']
+            logger.info(document_chunks[0].metadata)
 
             return title, document_chunks
 
@@ -172,6 +174,8 @@ class InfoLoader():
                 document_chunks = loader.load_and_split()
             
             title = document_chunks[0].metadata['title']
+            logger.info(document_chunks[0].metadata)
+
             return title, document_chunks
 
         # Handle file by file

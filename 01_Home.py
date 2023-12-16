@@ -6,7 +6,7 @@ import logging
 import os
 
 @st.cache_resource
-def configure_logging(file_path, level=logging.INFO):
+def configure_logging(file_path=None, streaming=None, level=logging.INFO):
     '''
     Initiates the logger, runs once due to caching
     '''
@@ -14,19 +14,21 @@ def configure_logging(file_path, level=logging.INFO):
 
     logger = logging.getLogger()
     logger.setLevel(level)
-
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger.setFormatter(formatter)
+    
     # Add a filehandler to output to a file
-    file_handler = logging.FileHandler(file_path, mode='w')
-    file_handler.setLevel(level)
+    if file_path:
+        file_handler = logging.FileHandler(file_path, mode='w')
+        file_handler.setLevel(level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     # Add a streamhandler to output to console
-    stream_handler = logging.StreamHandler()
-
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    if streaming:
+        stream_handler = logging.StreamHandler()
+        logger.addHandler(stream_handler)
+    
 
     return logger
 
@@ -64,7 +66,7 @@ def main():
     # Load configs and check for session_states
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()    
-    logger = configure_logging('logs/python_logger.log')
+    logger = configure_logging()
     loader, vector_db = get_resources()  
 
     #------------------------------------ SIDEBAR ----------------------------------------#
