@@ -15,18 +15,21 @@ def configure_logging(file_path=None, streaming=None, level=logging.INFO):
     logger.setLevel(level)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
-    # Add a filehandler to output to a file
-    if file_path:
-        file_handler = logging.FileHandler(file_path, mode='a')
-        file_handler.setLevel(level)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+    if not len(logger.handlers):
+        # Add a filehandler to output to a file
+        if file_path:
+            file_handler = logging.FileHandler(file_path, mode='a')
+            file_handler.setLevel(level)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            logger.info('Added filer_handler')
 
-    # Add a streamhandler to output to console
-    if streaming:
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
+        # Add a streamhandler to output to console
+        if streaming:
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
+            logger.info('Added stream_handler')
     
 
     return logger
