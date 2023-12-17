@@ -3,7 +3,6 @@ import yaml
 from modules.InfoLoader import InfoLoader
 from modules.VectorDB import VectorDB
 import logging
-import os
 
 @st.cache_resource
 def configure_logging(file_path=None, streaming=None, level=logging.INFO):
@@ -63,7 +62,7 @@ def main():
     '''
     Main Function for streamlit interface
     '''
-    # Load configs and check for session_states
+    # Load configs, logger, classes
     st.set_page_config(page_title="Document Query Bot ")
     initialize_session_state()    
     if st.session_state.config['local']:
