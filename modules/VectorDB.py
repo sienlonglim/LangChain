@@ -43,6 +43,7 @@ class VectorDB():
             temperature=temperature,
             api_key=openai_api_key
             )
+        
 
     def create_chain(self, prompt_mode : str, source : str):
         logger.info('Creating chain from template')
@@ -76,7 +77,6 @@ class VectorDB():
                         'score_threshold': 0.5,     # Minimum relevance threshold for similarity_score_threshold
                         'fetch_k': 5,              # Amount of documents to pass to MMR algorithm (Default: 20)
                         'lambda_mult': 0.5,         # Diversity of results returned by MMR; 1 for minimum diversity and 0 for maximum. (Default: 0.5)
-                        #'filter': {'filetype':'pdf'} #Filter by document metadata'search'
                         }
                 ),
                 return_source_documents=True,
