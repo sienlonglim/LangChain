@@ -160,7 +160,8 @@ class InfoLoader():
             # Replace the source with title (for display in st UI later)
             for chunk in document_chunks:
                 chunk.metadata['source'] = chunk.metadata['title']
-            logger.info(chunk.metadata['title'])
+            title = chunk.metadata['title']
+            logger.info(title)
 
             return title, document_chunks
 
@@ -176,7 +177,7 @@ class InfoLoader():
                 document_chunks = loader.load_and_split()
             
             title = document_chunks[0].metadata['title']
-            logger.info(document_chunks[0].metadata)
+            logger.info(title)
 
             return title, document_chunks
 
