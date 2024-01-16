@@ -2,7 +2,9 @@
 <a href="https://github.com/sienlonglim/LangChain"><img alt="Static Badge" src="https://img.shields.io/badge/github-black?style=flat-square&logo=github"></a> <img alt="GitHub commit activity (branch)" src="https://img.shields.io/github/commit-activity/t/sienlonglim/LangChain">
 <a href="https://document-query-bot.streamlit.app/"><img alt="Static Badge" src="https://img.shields.io/badge/Streamlit%20App-red?style=flat-square&logo=streamlit&labelColor=white"></a> 
 
-This project implements RAG using OpenAI's embedding models and LangChain's Python library. Areas include:
+This project implements RAG using OpenAI's embedding models and LangChain's Python library.  The aim is to make a user-friendly RAG application with the ability to ingest data from multiple sources (word, pdf, txt, youtube, wikipedia)
+
+Domain areas include:
 - Document splitting
 - Embeddings (OpenAI)
 - Vector database (Chroma / FAISS)
